@@ -25,6 +25,7 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
     return children.length <= 400 && !/[#*`\[\]>_~|]/.test(children);
   }, [children, isStreaming]);
 
+  const useBlur = children.length <= 150;
   if (isPlain) {
     return (
       <div className={["markdown-body", className].filter(Boolean).join(" ")}>
@@ -32,7 +33,7 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
           {Array.from(children).map((ch, i) => (
             <span
               key={i}
-              className="char-in"
+              className={useBlur ? "char-in" : "char-in-plain"}
               style={{ animationDelay: `${Math.min(i * 4, 240)}ms` }}
             >
               {ch === " " ? "\u00A0" : ch}
@@ -115,12 +116,13 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
     p({ children }) {
       // 流式输出时逐字渐显上滑（纯文本段落才启用，长文本/大段退化为普通渲染，避免大量 span 拖慢流式）
       if (isStreaming && typeof children === "string" && children.length <= 400) {
+        const plain = children.length > 150;
         return (
           <p className="char-stream">
             {Array.from(children).map((ch, i) => (
               <span
                 key={i}
-                className="char-in"
+                className={plain ? "char-in-plain" : "char-in"}
                 style={{ animationDelay: `${Math.min(i * 4, 240)}ms` }}
               >
                 {ch === " " ? "\u00A0" : ch}

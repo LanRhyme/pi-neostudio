@@ -1275,17 +1275,27 @@ html[data-accent="custom"].dark {
   --accent-hover: color-mix(in srgb, var(--accent-custom, #a3b592) 82%, #ffffff);
 }
 
-/* 流式逐字丝滑浮现：微上滑 + 平滑缓出（仅合成器属性，无 blur 滤镜，流式不卡） */
+/* 流式逐字丝滑浮现：微上滑 + 轻量模糊渐显（2.5px 小半径，成本可控） */
 @keyframes char-in {
-  0%   { opacity: 0; transform: translateY(0.35em); }
-  100% { opacity: 1; transform: translateY(0); }
+  0%   { opacity: 0; transform: translateY(0.35em); filter: blur(2.5px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 .char-stream {
   white-space: pre-wrap;
 }
 .char-in {
   display: inline-block;
-  animation: char-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: char-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform, filter;
+}
+/* 大量字符降级：无 blur，仅 opacity+位移（合成器友好，不重栅格） */
+@keyframes char-in-plain {
+  0%   { opacity: 0; transform: translateY(0.35em); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.char-in-plain {
+  display: inline-block;
+  animation: char-in-plain 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
   will-change: opacity, transform;
 }
 
