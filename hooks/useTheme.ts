@@ -38,7 +38,7 @@ function getServerSnapshot(): Theme {
 
 function getAccentSnapshot(): Accent {
   if (typeof document === "undefined") return "sage";
-  const stored = document.documentElement.dataset.accent as Accent | undefined;
+  const stored = document.documentElement.getAttribute("data-accent") as Accent | null;
   if (stored && ACCENTS.some((a) => a.id === stored)) return stored;
   return "sage";
 }
@@ -108,7 +108,7 @@ export function useTheme() {
   }, []);
 
   const setAccent = useCallback((next: Accent, customHex?: string) => {
-    document.documentElement.dataset.accent = next;
+    document.documentElement.setAttribute("data-accent", next);
     if (next === "custom" && customHex) {
       document.documentElement.style.setProperty("--accent-custom", customHex);
       try {
