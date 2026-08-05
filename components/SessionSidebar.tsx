@@ -388,7 +388,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCwd, setSelectedCwd] = useState<string | null>(null);
+  // 初始值跟随 prop：SSR 与 hydration 保持一致的 disabled/选中态，
+  // 后续 prop 变化由下方的 useEffect 同步（避免 hydration mismatch）
+  const [selectedCwd, setSelectedCwd] = useState<string | null>(selectedCwdProp ?? null);
   const [homeDir, setHomeDir] = useState<string>("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState("");
