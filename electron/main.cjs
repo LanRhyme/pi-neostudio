@@ -71,15 +71,17 @@ function createWindow(url) {
 }
 
 app.whenReady().then(async () => {
-	// 优先复用 dev server（开发时用户可能已启动 npm run dev）
-	const devAlive = await isPortAlive(30141);
+	// 默认使用生产模式（30142，无 dev 指示器等开发浮层）
+	// 仅当显式传入 --dev 时才复用 dev server（30141）
+	const useDev = process.argv.includes("--dev");
+	const devAlive = useDev && (await isPortAlive(30141));
 	const prodAlive = await isPortAlive(PROD_PORT);
 
 	let url;
-	if (prodAlive) {
-		url = PROD_URL;
-	} else if (devAlive) {
+	if (useDev && devAlive) {
 		url = DEV_URL;
+	} else if (prodAlive) {
+		url = PROD_URL;
 	} else {
 		const ok = await startNextServer();
 		url = ok ? PROD_URL : null;

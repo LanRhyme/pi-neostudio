@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
     "@earendil-works/pi-tui",
   ],
   allowedDevOrigins: ['192.168.*.*'],
+  devIndicators: false,
   async headers() {
     return [
       {

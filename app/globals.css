@@ -44,28 +44,29 @@
 }
 
 html.dark {
-  --bg: #141414;
-  --bg-panel: #1a1a1a;
-  --bg-hover: #202020;
-  --bg-selected: #2a2a2a;
-  --border: #2e2e2e;
-  --text: #e8e8e8;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
+  /* shadcn zinc 中性黑灰系 */
+  --bg: #09090b;
+  --bg-panel: #111113;
+  --bg-hover: #18181b;
+  --bg-selected: #232327;
+  --border: #26262b;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
   --accent: #60a5fa;
   --accent-hover: #93c5fd;
-  --user-bg: color-mix(in srgb, var(--accent) 12%, #141414);
-  --assistant-bg: #151515;
-  --tool-bg: #181818;
+  --user-bg: color-mix(in srgb, var(--accent) 10%, #09090b);
+  --assistant-bg: #0c0c0e;
+  --tool-bg: #131316;
   --bg-subtle: rgba(255,255,255,0.04);
-  --danger: #c08a84;
-  --danger-hover: #d09a94;
-  --success: #94b184;
-  --success-hover: #a5c095;
-  --warning: #c4a878;
-  --warning-hover: #d2b98c;
-  --info: #8fb0c4;
-  --info-hover: #a0bdd0;
+  --danger: #c98f88;
+  --danger-hover: #d8a29b;
+  --success: #9cb089;
+  --success-hover: #adbf9b;
+  --warning: #c6ad82;
+  --warning-hover: #d3bd96;
+  --info: #93aebf;
+  --info-hover: #a5bdcc;
 }
 
 /* Theme toggle: circular wipe via View Transitions API.
@@ -1274,19 +1275,18 @@ html[data-accent="custom"].dark {
   --accent-hover: color-mix(in srgb, var(--accent-custom, #a3b592) 82%, #ffffff);
 }
 
-/* 流式逐字渐显上滑（弹性 overshoot） */
+/* 流式逐字丝滑浮现：微上滑 + 虚化到实焦 + 平滑缓出 */
 @keyframes char-in {
-  0%   { opacity: 0; transform: translateY(6px) scale(0.92); }
-  60%  { opacity: 1; transform: translateY(-1px) scale(1.02); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0%   { opacity: 0; transform: translateY(0.45em); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 .char-stream {
   white-space: pre-wrap;
 }
 .char-in {
   display: inline-block;
-  animation: char-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  will-change: opacity, transform;
+  animation: char-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform, filter;
 }
 
 /* 会话切换过渡 */
