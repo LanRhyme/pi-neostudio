@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo, type MouseEvent } from "react";
+import { useUiSettings } from "@/hooks/useUiSettings";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { resolveLocalFileHref } from "@/lib/file-links";
 import { encodeFilePathForApi } from "@/lib/file-paths";
@@ -20,10 +21,12 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
   const normalizedMarkdown = useMemo(() => normalizeDisplayMath(children), [children]);
   // 流式纯文本快捷路径：无 markdown 语法时跳过 react-markdown 全量解析，
   // 直接逐字渲染 —— 消除流式期间每帧 markdown 解析的 CPU 开销
+  const { settings } = useUiSettings();
+  const animateChars = isStreaming && settings.charAnimation;
   const isPlain = useMemo(() => {
-    if (!isStreaming) return false;
+    if (!animateChars) return false;
     return children.length <= 400 && !/[#*`\[\]>_~|]/.test(children);
-  }, [children, isStreaming]);
+  }, [children, animateChars]);
 
   const useBlur = children.length <= 150;
   // Stable renderer identities keep stateful blocks mounted across message hover updates.
@@ -97,7 +100,7 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
     },
     p({ children }) {
       // 流式输出时逐字渐显上滑（纯文本段落才启用，长文本/大段退化为普通渲染，避免大量 span 拖慢流式）
-      if (isStreaming && typeof children === "string" && children.length <= 400) {
+      if (animateChars && typeof children === "string" && children.length <= 400) {
         const plain = children.length > 150;
         return (
           <p className="char-stream">
@@ -115,7 +118,7 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
       }
       return <p>{children}</p>;
     },
-  }), [cwd, isStreaming, onOpenFile]);
+  }), [cwd, animateChars, onOpenFile]);
   if (isPlain) {
     return (
       <div className={["markdown-body", className].filter(Boolean).join(" ")}>

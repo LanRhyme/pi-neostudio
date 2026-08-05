@@ -6,6 +6,7 @@ import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, splitFinalAssistantBlocks } from "@/lib/message-display";
 import { MessageView } from "./MessageView";
+import { useUiSettings } from "@/hooks/useUiSettings";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
@@ -275,7 +276,9 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // 自动滚动跟随：消息/流式更新时若用户停在底部则滚到底
   // 双 rAF 确保 DOM 高度已更新（流式内容每帧增长，effect 执行时可能尚未布局）
   const scrollToBottomRafRef = useRef<number | null>(null);
+  const { settings: uiSettings } = useUiSettings();
   useEffect(() => {
+    if (!uiSettings.autoScroll) return;
     if (!stickToBottomRef.current) return;
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -290,7 +293,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         scrollToBottomRafRef.current = null;
       }
     };
-  }, [streamState.streamingMessage, messages.length, scrollContainerRef]);
+  }, [streamState.streamingMessage, messages.length, scrollContainerRef, uiSettings.autoScroll]);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;

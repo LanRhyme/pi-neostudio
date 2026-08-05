@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState, useRef, useEffect, useMemo } from "react";
+import { useUiSettings } from "@/hooks/useUiSettings";
 import { MarkdownBody } from "./MarkdownBody";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/hooks/useI18n";
@@ -978,6 +979,7 @@ function BlockView({
 				sessionId={sessionId}
 				entryId={entryId}
 				blockIndex={blockIndex}
+				isStreaming={isStreaming}
 			/>
 		);
 	}
@@ -1014,18 +1016,33 @@ function ThinkingBlock({
 	sessionId,
 	entryId,
 	blockIndex,
+	isStreaming,
 }: {
 	block: ThinkingContent;
 	duration?: number;
 	sessionId?: string;
 	entryId?: string;
 	blockIndex: number;
+	isStreaming?: boolean;
 }) {
 	const { t } = useI18n();
+	const { settings } = useUiSettings();
 	const [expanded, setExpanded] = useState(false);
 	const [content, setContent] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	// 流式时自动展开，结束后自动收起（可配置）
+	useEffect(() => {
+		if (!settings.thinkingAutoExpand) return;
+		if (isStreaming) {
+			setExpanded(true);
+		} else {
+			// 延迟收起，让用户看清最后一段思考
+			const timer = setTimeout(() => setExpanded(false), 1500);
+			return () => clearTimeout(timer);
+		}
+	}, [isStreaming, settings.thinkingAutoExpand]);
 
 	const toggle = async () => {
 		const nextExpanded = !expanded;
@@ -1046,6 +1063,12 @@ function ThinkingBlock({
 			setLoading(false);
 		}
 	};
+
+	const thinkingText = error
+		? error
+		: loading
+			? t("i18n.loadingThinking")
+			: (block.deferred ? content : block.thinking) ?? "";
 
 	return (
 		<div
@@ -1099,9 +1122,13 @@ function ThinkingBlock({
 							borderTop: "1px solid var(--border)",
 						}}
 					>
-						{loading
-							? t("i18n.loadingThinking")
-							: (error ?? (block.deferred ? content : block.thinking))}
+						{thinkingText !== "" ? (
+							<MarkdownBody
+								children={thinkingText}
+								isStreaming={isStreaming}
+								cwd={undefined}
+							/>
+						) : null}
 					</div>
 				</div>
 			</div>
