@@ -241,6 +241,8 @@ export function ChatMinimap({
   const previewBoxRef = useRef<HTMLDivElement>(null);
   const previewItemRefs = useRef(new Map<number, HTMLDivElement>());
   const previewHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewHidingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [previewHiding, setPreviewHiding] = useState(false);
   const activeNodeLockRef = useRef<{ index: number; until: number } | null>(null);
   const pendingNavigationRef = useRef<{
     nodeIndex: number;
@@ -523,17 +525,22 @@ export function ChatMinimap({
     previewHideTimerRef.current = null;
   }, []);
 
+  // showPreview: cancel any pending hide, reset hiding animation, open panel
   const showPreview = useCallback(() => {
     cancelPreviewHide();
+    setPreviewHiding(false);
     setMinimapHovered(true);
   }, [cancelPreviewHide]);
 
   const schedulePreviewHide = useCallback(() => {
     cancelPreviewHide();
+    // Trigger exit CSS animation first, then unmount after it completes
+    setPreviewHiding(true);
     previewHideTimerRef.current = setTimeout(() => {
       previewHideTimerRef.current = null;
       setMinimapHovered(false);
       setMouseYRatio(null);
+      setPreviewHiding(false);
     }, PREVIEW_HIDE_DELAY);
   }, [cancelPreviewHide]);
 
@@ -651,21 +658,25 @@ export function ChatMinimap({
                 width: 8,
                 height: 8,
                 borderRadius: 2,
-                background: isActive ? "rgba(128,128,128,0.42)" : "rgba(128,128,128,0.16)",
-                border: `1.5px solid ${isActive ? "rgba(128,128,128,0.95)" : "rgba(128,128,128,0.58)"}`,
-                boxShadow: isActive ? "0 0 0 2px var(--bg-panel)" : "none",
-                transition: "transform 0.1s, background 0.1s",
-                transform: isNearest ? "scale(1.25)" : "scale(1)",
+                background: isActive
+                  ? "color-mix(in srgb, var(--accent) 60%, transparent)"
+                  : "rgba(128,128,128,0.16)",
+                border: `1.5px solid ${isActive ? "var(--accent)" : "rgba(128,128,128,0.45)"}`,
+                boxShadow: isActive
+                  ? "0 0 0 2.5px color-mix(in srgb, var(--accent) 18%, transparent)"
+                  : "none",
+                transition: "transform 0.18s cubic-bezier(0.16,1,0.3,1), background 0.18s, border-color 0.18s, box-shadow 0.18s",
+                transform: isNearest ? "scale(1.4)" : "scale(1)",
               }}
             />
           </div>
         );
       })}
 
-      {minimapHovered && allNodes.length > 0 && (
+      {(minimapHovered || previewHiding) && allNodes.length > 0 && (
         <div
           ref={previewBoxRef}
-          className={styles.preview}
+          className={`${styles.preview} ${previewHiding ? styles.previewHiding : ""}`}
           data-minimap-preview-box=""
           onMouseEnter={showPreview}
           onMouseDown={(event) => event.stopPropagation()}

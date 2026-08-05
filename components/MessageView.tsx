@@ -1166,7 +1166,7 @@ function ToolCallBlock({
 
 	return (
 		<div
-			className="tool-card-in"
+			className={result === undefined ? "tool-card-running" : "tool-card-in"}
 			style={{
 				borderRadius: 7,
 				overflow: "hidden",

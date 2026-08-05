@@ -1380,12 +1380,14 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 position: "absolute",
                 left: 0,
                 right: 0,
-                bottom: "calc(100% + 8px)",
+                bottom: "calc(100% + 10px)",
                 zIndex: 120,
-                background: "var(--bg)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                boxShadow: "0 -6px 20px rgba(0,0,0,0.12)",
+                background: "color-mix(in srgb, var(--bg-panel) 90%, transparent)",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+                border: "1px solid color-mix(in srgb, var(--border) 80%, var(--accent))",
+                borderRadius: 12,
+                boxShadow: "0 -8px 32px -4px rgba(0,0,0,0.18), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)",
                 overflow: "hidden",
                 maxHeight: "min(56vh, 460px)",
               }}
@@ -1533,12 +1535,14 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   position: "absolute",
                   left: 0,
                   right: 0,
-                  bottom: "calc(100% + 8px)",
+                  bottom: "calc(100% + 10px)",
                   zIndex: 120,
-                  background: "var(--bg)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  boxShadow: "0 -6px 20px rgba(0,0,0,0.12)",
+                  background: "color-mix(in srgb, var(--bg-panel) 90%, transparent)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  border: "1px solid color-mix(in srgb, var(--border) 80%, var(--accent))",
+                  borderRadius: 12,
+                  boxShadow: "0 -8px 32px -4px rgba(0,0,0,0.18), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)",
                   overflow: "hidden",
                   maxHeight: "min(48vh, 400px)",
                 }}
@@ -1616,23 +1620,28 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               </div>
             );
           })()}
-          <div
-            className="chat-input-shell"
-            style={{
-              minWidth: 0,
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              background: "var(--bg)",
-              border: `1px solid ${bashMode ? "var(--tool-bg)" : isStreaming && (onSteer || onFollowUp)
-                ? "rgba(234,179,8,0.4)"
-                : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
-              borderRadius: 14,
-              padding: "10px 10px 10px 14px",
-              boxShadow: "0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.10)",
-              transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s",
-            } as React.CSSProperties}
-          >
+          <style dangerouslySetInnerHTML={{ __html: `
+            .chat-input-shell {
+              min-width: 0;
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              background: color-mix(in srgb, var(--bg-panel) 85%, transparent);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
+              border: 1px solid ${bashMode ? "var(--tool-bg)" : isStreaming && (onSteer || onFollowUp) ? "rgba(234,179,8,0.4)" : "color-mix(in srgb, var(--border) 70%, transparent)"};
+              border-radius: 16px;
+              padding: 10px 10px 10px 14px;
+              box-shadow: 0 4px 12px -4px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.05);
+              transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            .chat-input-shell:focus-within {
+              border-color: var(--accent);
+              box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 8px 24px -8px rgba(0,0,0,0.15);
+              transform: translateY(-1px);
+            }
+          `}} />
+          <div className="chat-input-shell">
           <textarea
             ref={textareaRef}
             value={value}

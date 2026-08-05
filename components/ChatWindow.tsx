@@ -768,6 +768,8 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
             )}
 
             <div ref={messagesEndRef} />
+            {/* Bottom spacer so last message stays above the floating input */}
+            <div style={{ height: "var(--chat-input-height, 120px)" }} aria-hidden="true" />
             </div>
           </div>
         </div>
@@ -780,21 +782,26 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
             onRevealHistory={revealHistoryForMinimap}
           />
         )}
-      </div>
-
-      <div className="relative">
+        {/* Floating input overlay — sits above scroll area */}
         <div
           style={{
-            padding: `0 ${CHAT_COLUMN_PADDING}px`,
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: isMobile ? 0 : CHAT_MINIMAP_WIDTH,
+            zIndex: 50,
+            padding: `8px ${CHAT_COLUMN_PADDING}px 12px`,
             paddingRight: isMobile ? CHAT_COLUMN_PADDING : CHAT_INPUT_RIGHT_PADDING,
+            // Gradient fade instead of backdrop-filter (parent is overflow:hidden which clips backdrop)
+            background: "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--bg) 70%, transparent) 28%, color-mix(in srgb, var(--bg) 96%, transparent) 60%, var(--bg) 100%)",
           }}
         >
           <div style={{ maxWidth: 820, margin: "0 auto" }}>
             <ExtensionWidgets widgets={belowEditorWidgets} />
+            {chatInputElement}
+            <ExtensionStatusBar statuses={extensionStatuses} />
           </div>
         </div>
-        {chatInputElement}
-        <ExtensionStatusBar statuses={extensionStatuses} />
       </div>
       </>
       )}

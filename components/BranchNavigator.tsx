@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { SessionEntry, SessionTreeNode } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -305,10 +306,10 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
           {branchIcon}
            {!compact && <span>{t("i18n.branches")}</span>}
         </button>
-        {open && dropdownPos && (
+        {open && dropdownPos && typeof document !== "undefined" && createPortal(
           <>
             <div
-              style={{ position: "fixed", inset: 0, zIndex: 490 }}
+              style={{ position: "fixed", inset: 0, zIndex: 4900, background: "transparent" }}
               onClick={() => {
                 if (openProp === undefined) setOpenInternal(false);
                 else onToggle?.();
@@ -326,7 +327,7 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
               borderBottomLeftRadius: 6,
               borderBottomRightRadius: 6,
               boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-              zIndex: 500,
+              zIndex: 5000,
             }}>
             {hasContent && firstNode ? (
               <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
@@ -348,7 +349,8 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
               </div>
             )}
           </div>
-          </>
+          </>,
+          document.body
         )}
       </div>
     );

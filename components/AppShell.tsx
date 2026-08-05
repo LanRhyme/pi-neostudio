@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
@@ -891,7 +892,7 @@ export function AppShell() {
              {accentPickerOpen && (
                <>
                  <div
-                   style={{ position: "fixed", inset: 0, zIndex: 4900 }}
+                   style={{ position: "fixed", inset: 0, zIndex: 4900, background: "rgba(0,0,0,0.2)" }}
                    onClick={() => setAccentPickerOpen(false)}
                  />
                  <div
@@ -899,46 +900,70 @@ export function AppShell() {
                    role="menu"
                    style={{
                      position: "fixed", zIndex: 4950,
-                     top: 52, right: 8,
-                     padding: 10, borderRadius: 10,
+                     top: 40, left: "50%", transform: "translateX(-50%)",
+                     width: 400, maxWidth: "90vw",
+                     padding: 6, borderRadius: 8,
                      border: "1px solid var(--border)",
                      background: "var(--bg-panel)",
-                     boxShadow: "0 8px 30px -6px rgba(0,0,0,0.18)",
+                     boxShadow: "0 12px 36px rgba(0,0,0,0.25)",
+                     display: "flex", flexDirection: "column", gap: 2,
                    }}
                  >
-                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                     {ACCENTS.map((a) => (
-                       <button
-                         key={a.id}
-                         type="button"
-                         role="menuitemradio"
-                         aria-checked={accent === a.id}
-                         title={a.name}
-                         onClick={() => { setAccent(a.id); setAccentPickerOpen(false); }}
-                         style={{
-                           width: 22, height: 22, borderRadius: 999,
-                           background: a.id === "custom"
-                             ? "conic-gradient(#e11d48, #ea580c, #eab308, #22c55e, #0d9488, #3b82f6, #7c3aed, #e11d48)"
-                             : a.color,
-                           border: accent === a.id ? "2px solid var(--text)" : "2px solid transparent",
-                           cursor: "pointer", padding: 0,
-                           transition: "transform 0.12s ease",
-                         }}
-                         onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.15)"; }}
-                         onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-                       />
-                     ))}
+                   <div style={{ padding: "4px 8px 8px", fontSize: 12, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", marginBottom: 4 }}>
+                     选择颜色主题 (Select Color Theme)
                    </div>
-                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-                     <span style={{ fontSize: 11, color: "var(--text-muted)" }}>自定义色</span>
+                   {ACCENTS.map((a) => (
+                     <button
+                       key={a.id}
+                       type="button"
+                       role="menuitemradio"
+                       aria-checked={accent === a.id}
+                       title={a.name}
+                       onClick={() => { setAccent(a.id); setAccentPickerOpen(false); }}
+                       style={{
+                         display: "flex", alignItems: "center", gap: 12,
+                         width: "100%", padding: "8px 12px", borderRadius: 4,
+                         background: accent === a.id ? "var(--bg-selected)" : "transparent",
+                         border: "none", cursor: "pointer", textAlign: "left",
+                         color: "var(--text)", fontSize: 13,
+                       }}
+                       onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                       onMouseLeave={(e) => { e.currentTarget.style.background = accent === a.id ? "var(--bg-selected)" : "transparent"; }}
+                     >
+                       <div style={{
+                         width: 14, height: 14, borderRadius: 999, flexShrink: 0,
+                         background: a.id === "custom"
+                           ? "conic-gradient(#e11d48, #ea580c, #eab308, #22c55e, #0d9488, #3b82f6, #7c3aed, #e11d48)"
+                           : a.color,
+                         border: "1px solid var(--border)",
+                       }} />
+                       <span style={{ flex: 1 }}>{a.name}</span>
+                       {accent === a.id && (
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                           <polyline points="20 6 9 17 4 12" />
+                         </svg>
+                       )}
+                     </button>
+                   ))}
+                   <label
+                     style={{
+                       display: "flex", alignItems: "center", gap: 12,
+                       width: "100%", padding: "8px 12px", borderRadius: 4,
+                       background: "transparent", border: "none", cursor: "pointer",
+                       color: "var(--text)", fontSize: 13, marginTop: 4, borderTop: "1px solid var(--border)",
+                     }}
+                     onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                   >
                      <input
                        type="color"
                        value={accent === "custom" ? (getComputedStyle(document.documentElement).getPropertyValue("--accent-custom").trim() || "#6e7f5a") : "#6e7f5a"}
                        onChange={(e) => { setAccent("custom", e.target.value); }}
-                       style={{ width: 26, height: 26, padding: 0, border: "none", background: "none", cursor: "pointer" }}
+                       style={{ width: 14, height: 14, padding: 0, border: "none", background: "none", cursor: "pointer", flexShrink: 0 }}
                        title="选择自定义主题色"
                      />
-                   </div>
+                     <span style={{ flex: 1 }}>自定义颜色 (Custom Color)</span>
+                   </label>
                  </div>
                </>
              )}
@@ -1295,10 +1320,10 @@ export function AppShell() {
             );
           })()}
           {/* Top panel dropdown — shared, only one active at a time */}
-          {activeTopPanel && topPanelPos && (
+          {activeTopPanel && topPanelPos && typeof document !== "undefined" && createPortal(
             <>
               <div
-                style={{ position: "fixed", inset: 0, zIndex: 490 }}
+                style={{ position: "fixed", inset: 0, zIndex: 4900, background: "rgba(0,0,0,0.1)" }}
                 onClick={() => setActiveTopPanel(null)}
               />
               <div className="panel-content-in" style={{
@@ -1308,14 +1333,14 @@ export function AppShell() {
                 width: topPanelPos.width,
                 maxHeight: `calc(100dvh - ${topPanelPos.top}px)`,
                 overflowY: "auto",
-                zIndex: 500,
+                zIndex: 5000,
                 background: "var(--bg-panel)",
                 borderLeft: "1px solid var(--border)",
                 borderRight: "1px solid var(--border)",
                 borderBottom: "1px solid var(--border)",
                 borderBottomLeftRadius: 6,
                 borderBottomRightRadius: 6,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                boxShadow: "0 12px 36px rgba(0,0,0,0.25)",
               }}>
               {activeTopPanel === "language" && (
                 <div
@@ -1532,7 +1557,8 @@ export function AppShell() {
                 </div>
               )}
             </div>
-            </>
+            </>,
+            document.body
           )}
 
         </div>
