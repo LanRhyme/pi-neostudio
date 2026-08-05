@@ -769,7 +769,7 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
 
             <div ref={messagesEndRef} />
             {/* Bottom spacer so last message stays above the floating input */}
-            <div style={{ height: "var(--chat-input-height, 120px)" }} aria-hidden="true" />
+            <div style={{ height: "var(--chat-input-height, 160px)" }} aria-hidden="true" />
             </div>
           </div>
         </div>
