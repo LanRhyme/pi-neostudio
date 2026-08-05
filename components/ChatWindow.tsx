@@ -240,6 +240,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const prevScrollDistanceRef = useRef<number | null>(null);
+  // 自动滚动跟随：用户靠近底部时流式输出自动滚到底，上翻浏览时不打断
+  const stickToBottomRef = useRef(true);
 
   // IntersectionObserver on the sentinel div at the top of the message list.
   // When it becomes visible, load the next page of older messages.
@@ -270,6 +272,24 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     container.scrollTop = restoreScrollTop(container.scrollHeight, prevScrollDistanceRef.current);
     prevScrollDistanceRef.current = null;
   }, [visibleCount, scrollContainerRef]);
+  // 自动滚动跟随：消息/流式更新时若用户停在底部则滚到底
+  const lastScrollBottomRef = useRef(0);
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !stickToBottomRef.current) return;
+    if (container.scrollHeight !== lastScrollBottomRef.current) {
+      lastScrollBottomRef.current = container.scrollHeight;
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [streamState.streamingMessage, messages.length, scrollContainerRef]);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    stickToBottomRef.current =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+  }, []);
+
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
@@ -515,6 +535,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         <div
           key={session?.id ?? sessionIdRef.current ?? "default"}
           ref={scrollContainerRef}
+          onScroll={handleScroll}
           className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:none] session-switch"
         >
           <div style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}>
