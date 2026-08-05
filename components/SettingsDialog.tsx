@@ -4,6 +4,7 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 import { useUiSettings } from "@/hooks/useUiSettings";
 import { useI18n } from "@/hooks/useI18n";
 import { settingsDialogStore } from "@/lib/settings-dialog-store";
+import { UsageStats } from "./UsageStats";
 
 interface Props {
 	onClose: () => void;
@@ -268,6 +269,28 @@ export function SettingsDialog({ onClose }: Props) {
 						>
 							{t("settings.reset")}
 						</button>
+					</div>
+
+					{/* 用量统计（Codex 风格）：按天统计 token 消耗，支持与插件数据联动 */}
+					<div
+						style={{
+							marginTop: 14,
+							paddingTop: 14,
+							borderTop: "1px solid var(--border)",
+						}}
+					>
+						<div
+							style={{
+								color: "var(--text-muted)",
+								fontSize: 11,
+								fontWeight: 600,
+								letterSpacing: "0.06em",
+								paddingBottom: 10,
+							}}
+						>
+							{t("usage.title")}
+						</div>
+						<UsageStats />
 					</div>
 				</div>
 			</div>
