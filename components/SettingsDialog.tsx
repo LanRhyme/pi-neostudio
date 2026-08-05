@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { useUiSettings, type UiSettings } from "@/hooks/useUiSettings";
 import { useI18n } from "@/hooks/useI18n";
+import { settingsDialogStore } from "@/lib/settings-dialog-store";
 
 interface Props {
 	onClose: () => void;
@@ -69,6 +70,16 @@ function ToggleRow({
 			</button>
 		</div>
 	);
+}
+
+/**
+ * 订阅模块级 store 的宿主组件：只有它自己重渲染，
+ * 打开/关闭不会触发 AppShell 整树重渲染（消除点击卡顿）
+ */
+export function SettingsDialogHost() {
+	const [, force] = useReducer((x: number) => x + 1, 0);
+	useEffect(() => settingsDialogStore.subscribe(() => force()), []);
+	return settingsDialogStore.isOpen() ? <SettingsDialog onClose={() => settingsDialogStore.close()} /> : null;
 }
 
 function IntensityOption({

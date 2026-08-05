@@ -8,7 +8,8 @@ import { ChatWindow } from "./ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
-import { SettingsDialog } from "./SettingsDialog";
+import { SettingsDialogHost } from "./SettingsDialog";
+import { settingsDialogStore } from "@/lib/settings-dialog-store";
 import { UiSettingsProvider } from "@/hooks/useUiSettings";
 import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
@@ -73,7 +74,6 @@ export function AppShell() {
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [pluginsConfigOpen, setPluginsConfigOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [projectTrust, setProjectTrust] = useState<ProjectTrustStatus | null>(null);
   const [projectTrustDialogOpen, setProjectTrustDialogOpen] = useState(false);
   const [projectTrustBusy, setProjectTrustBusy] = useState(false);
@@ -682,7 +682,7 @@ export function AppShell() {
           },
           {
              label: translate("settings.title"),
-            onClick: () => setSettingsOpen(true),
+            onClick: () => settingsDialogStore.open(),
             disabled: false,
             icon: (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1757,7 +1757,7 @@ export function AppShell() {
         onReloaded={() => setSessionKey((k) => k + 1)}
       />
     )}
-    {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+    <SettingsDialogHost />
     </>
     </UiSettingsProvider>
   );
