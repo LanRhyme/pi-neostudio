@@ -908,7 +908,7 @@ span.linenumber {
   .sidebar-container {
     position: relative;
     overflow: hidden;
-    transition: width 0.2s ease, min-width 0.2s ease;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .sidebar-container.sidebar-open {
     width: var(--sidebar-width, 260px);
@@ -923,6 +923,13 @@ span.linenumber {
   .sidebar-container > * {
     width: var(--sidebar-width, 260px);
     min-width: var(--sidebar-width, 260px);
+    opacity: 0;
+    transform: translateX(-12px);
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sidebar-container.sidebar-open > * {
+    opacity: 1;
+    transform: translateX(0);
   }
   .sidebar-container.sidebar-resizing,
   .sidebar-container.sidebar-resizing > * {
@@ -934,7 +941,7 @@ span.linenumber {
 @media (min-width: 960px) {
   .right-panel-container {
     overflow: hidden;
-    transition: width 0.2s ease, min-width 0.2s ease;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
   }
   .right-panel-container.right-panel-open {
@@ -947,6 +954,15 @@ span.linenumber {
     border-left: none !important;
   }
   /* keep inner content at fixed width so it doesn't reflow during animation */
+  .right-panel-container > * {
+    opacity: 0;
+    transform: translateX(12px);
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .right-panel-container.right-panel-open > * {
+    opacity: 1;
+    transform: translateX(0);
+  }
   .right-panel-container > * {
     width: var(--right-panel-width, clamp(360px, 42vw, 640px));
     min-width: 300px;

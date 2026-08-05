@@ -7,19 +7,19 @@ let isOpen = false;
 const listeners = new Set<() => void>();
 
 export const settingsDialogStore = {
-  isOpen: (): boolean => isOpen,
-  open: (): void => {
-    isOpen = true;
-    listeners.forEach((l) => l());
-  },
-  close: (): void => {
-    isOpen = false;
-    listeners.forEach((l) => l());
-  },
-  subscribe: (fn: () => void): (() => void) => {
-    listeners.add(fn);
-    return () => {
-      listeners.delete(fn);
-    };
-  },
+	isOpen: (): boolean => isOpen,
+	open: (): void => {
+		isOpen = true;
+		listeners.forEach((l) => l());
+	},
+	close: (): void => {
+		isOpen = false;
+		listeners.forEach((l) => l());
+	},
+	subscribe: (fn: () => void): (() => void) => {
+		listeners.add(fn);
+		return () => {
+			listeners.delete(fn);
+		};
+	},
 };
