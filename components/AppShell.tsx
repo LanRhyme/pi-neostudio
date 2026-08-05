@@ -9,8 +9,10 @@ import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SettingsDialogHost } from "./SettingsDialog";
+import { SidebarToggleButton, SidebarOverlay, SidebarPanel, RightPanelOverlay, RightPanelContainer, RightPanelToggleButton } from "./panel-widgets";
 import { settingsDialogStore } from "@/lib/settings-dialog-store";
 import { UiSettingsProvider } from "@/hooks/useUiSettings";
+import { uiPanelStore } from "@/lib/ui-panel-store";
 import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
@@ -78,8 +80,6 @@ export function AppShell() {
   const [projectTrustDialogOpen, setProjectTrustDialogOpen] = useState(false);
   const [projectTrustBusy, setProjectTrustBusy] = useState(false);
   const [projectTrustError, setProjectTrustError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [mobileSidebarReady, setMobileSidebarReady] = useState(false);
   const sidebarWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
   const rightPanelWidthRef = useRef(RIGHT_PANEL_FALLBACK_WIDTH);
@@ -94,20 +94,20 @@ export function AppShell() {
       ? SIDEBAR_MAX_WIDTH
       : getSidebarMaxWidth({
         viewportWidth: window.innerWidth,
-        rightPanelOpen,
+        rightPanelOpen: uiPanelStore.isRightPanelOpen(),
         rightPanelWidth: rightPanelWidthRef.current,
       }),
-    [rightPanelOpen],
+    [],
   );
   const getResponsiveRightPanelMaxWidth = useCallback(
     () => typeof window === "undefined"
       ? RIGHT_PANEL_MAX_WIDTH
       : getRightPanelMaxWidth({
         viewportWidth: window.innerWidth,
-        sidebarOpen,
+        sidebarOpen: uiPanelStore.isSidebarOpen(),
         sidebarWidth: sidebarWidthRef.current,
       }),
-    [sidebarOpen],
+    [],
   );
   const sidebarResizer = useResizablePanel({
     ariaLabel: translate("layout.resizeSidebar"),
@@ -137,16 +137,16 @@ export function AppShell() {
   // On mobile the sidebar is an overlay drawer; hide it by default so the chat
   // is visible on load. Runs once the breakpoint resolves after hydration.
   useEffect(() => {
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) uiPanelStore.setSidebarOpen(false);
   }, [isMobile]);
   useEffect(() => {
     setMobileSidebarReady(true);
   }, []);
   useEffect(() => {
-    if (!rightPanelOpen) return;
+    if (!uiPanelStore.isRightPanelOpen()) return;
     reclampSidebarWidth();
     reclampRightPanelWidth();
-  }, [reclampRightPanelWidth, reclampSidebarWidth, rightPanelOpen]);
+  }, [reclampRightPanelWidth, reclampSidebarWidth]);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
   const languageBtnRef = useRef<HTMLButtonElement>(null);
@@ -210,18 +210,18 @@ export function AppShell() {
   const [topPanelPos, setTopPanelPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const toggleTopPanel = useCallback((panel: "branches" | "system" | "session" | "language") => {
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) uiPanelStore.setSidebarOpen(false);
     setActiveTopPanel((cur) => cur === panel ? null : panel);
   }, [isMobile]);
 
   const openSessionStatsPanel = useCallback(() => {
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) uiPanelStore.setSidebarOpen(false);
     setActiveTopPanel("session");
   }, [isMobile]);
 
   const handleSidebarToggle = useCallback(() => {
     if (isMobile) setActiveTopPanel(null);
-    setSidebarOpen((open) => !open);
+    uiPanelStore.toggleSidebar();
   }, [isMobile]);
 
   useEffect(() => {
@@ -349,7 +349,7 @@ export function AppShell() {
     // now-empty right panel.
     setFileTabs([]);
     setActiveFileTabId(null);
-    setRightPanelOpen(false);
+    uiPanelStore.setRightPanelOpen(false);
     router.replace("/", { scroll: false });
   }, [router, selectedSession]);
 
@@ -360,7 +360,7 @@ export function AppShell() {
     setSystemPrompt(null);
     setInitialSessionRestored(true);
     // On mobile, collapse the overlay drawer so the chat is revealed after pick.
-    if (isMobile && !isRestore) setSidebarOpen(false);
+    if (isMobile && !isRestore) uiPanelStore.setSidebarOpen(false);
     if (isRestore) {
       // Suppress the redundant sessionKey bump that would come from the
       // onCwdChange effect firing after setSelectedCwd in the sidebar
@@ -381,7 +381,7 @@ export function AppShell() {
     setBranchActiveLeafId(null);
     setSystemPrompt(null);
     setActiveTopPanel(null);
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) uiPanelStore.setSidebarOpen(false);
     router.replace("/", { scroll: false });
   }, [router, isMobile]);
 
@@ -522,9 +522,9 @@ export function AppShell() {
       });
     });
     setActiveFileTabId(tabId);
-    setRightPanelOpen(true);
+    uiPanelStore.setRightPanelOpen(true);
     // On mobile the file panel is full-screen; close the drawer so it shows.
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) uiPanelStore.setSidebarOpen(false);
   }, [isMobile]);
 
   const handleOpenLinkedFile = useCallback((filePath: string) => {
@@ -534,7 +534,7 @@ export function AppShell() {
   const handleCloseFileTab = useCallback((tabId: string) => {
     setFileTabs((prev) => {
       const next = prev.filter((t) => t.id !== tabId);
-      if (next.length === 0) setRightPanelOpen(false);
+      if (next.length === 0) uiPanelStore.setRightPanelOpen(false);
       return next;
     });
     setActiveFileTabId((cur) => {
@@ -802,76 +802,25 @@ export function AppShell() {
       }}
     >
       {/* Mobile overlay backdrop */}
-      <div
-        className={`sidebar-overlay-backdrop${mobileSidebarReady ? "" : " sidebar-mobile-pending"}`}
-        onClick={() => setSidebarOpen(false)}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 199,
-          background: "rgba(0,0,0,0.4)",
-          opacity: sidebarOpen ? 1 : 0,
-          pointerEvents: sidebarOpen ? "auto" : "none",
-          transition: "opacity 0.25s ease",
-        }}
-      />
+      <SidebarOverlay mobilePending={mobileSidebarReady} />
 
       {/* Left sidebar */}
-      <div
-        ref={sidebarResizer.panelRef}
-        id="session-sidebar"
-        className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}${mobileSidebarReady ? "" : " sidebar-mobile-pending"}${sidebarResizer.isResizing ? " sidebar-resizing" : ""}`}
-        style={{
-          "--sidebar-width": `${sidebarResizer.width}px`,
-          background: "var(--bg-panel)",
-          borderRight: "1px solid var(--border)",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-          paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-          zIndex: 200,
-        } as React.CSSProperties}
+      <SidebarPanel
+        mobilePending={mobileSidebarReady}
+        resizing={sidebarResizer.isResizing}
+        panelRef={sidebarResizer.panelRef}
+        separatorProps={sidebarResizer.separatorProps}
+        width={sidebarResizer.width}
+        separatorTitle={`${translate("layout.resizeSidebar")}: ${translate("layout.resizeHint")}`}
       >
         {sidebarContent}
-      </div>
-      {sidebarOpen && (
-        <div
-          {...sidebarResizer.separatorProps}
-          aria-controls="session-sidebar"
-          className={`panel-resize-handle sidebar-resize-handle${sidebarResizer.isResizing ? " is-resizing" : ""}`}
-          data-resize-handle="sidebar"
-          title={`${translate("layout.resizeSidebar")}: ${translate("layout.resizeHint")}`}
-        />
-      )}
+      </SidebarPanel>
 
       {/* Center: chat */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         {/* Top bar with sidebar toggle */}
         <div ref={topBarRef} style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
-          <button
-            onClick={handleSidebarToggle}
-             title={sidebarOpen ? translate("sidebar.hide") : translate("sidebar.show")}
-             aria-label={sidebarOpen ? translate("sidebar.hide") : translate("sidebar.show")}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
-              background: "none", border: "none", borderRight: "1px solid var(--border)",
-              color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
-          >
-            {sidebarOpen ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
-          </button>
+          <SidebarToggleButton size={TOP_BAR_ICON_BUTTON_SIZE} />
           <button
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -1276,7 +1225,7 @@ export function AppShell() {
                   marginLeft: "auto",
                   display: "flex", alignItems: "center", gap: 10,
                   paddingLeft: 12,
-                  paddingRight: rightPanelOpen ? 12 : 48,
+                  paddingRight: 12,
                   height: "100%",
                   background: activeTopPanel === "session" ? "var(--bg-selected)" : "none",
                   border: "none",
@@ -1639,12 +1588,8 @@ export function AppShell() {
         </div>
       </div>
 
-      <div
-        aria-hidden="true"
-        className={`right-panel-overlay-backdrop${rightPanelOpen ? " is-open" : ""}`}
-        onClick={() => setRightPanelOpen(false)}
-      />
-      {rightPanelOpen && (
+      <RightPanelOverlay />
+      {uiPanelStore.isRightPanelOpen() && (
         <div
           {...rightPanelResizer.separatorProps}
           aria-controls="file-panel"
@@ -1655,17 +1600,9 @@ export function AppShell() {
       )}
 
       {/* Right panel: file viewer — always mounted, width animated via CSS */}
-      <div
-        ref={rightPanelResizer.panelRef}
-        id="file-panel"
-        className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}${rightPanelResizer.isResizing ? " right-panel-resizing" : ""}`}
-        style={{
-          "--right-panel-width": `${rightPanelResizer.width}px`,
-          display: "flex",
-          flexDirection: "column",
-          borderLeft: "1px solid var(--border)",
-          background: "var(--bg)",
-        } as React.CSSProperties}
+      <RightPanelContainer
+        resizing={rightPanelResizer.isResizing}
+        panelRef={rightPanelResizer.panelRef}
       >
         {/* Right panel tab bar */}
         <div style={{
@@ -1685,7 +1622,6 @@ export function AppShell() {
               onCloseTab={handleCloseFileTab}
             />
           </div>
-
         </div>
 
         {/* File content */}
@@ -1697,7 +1633,6 @@ export function AppShell() {
               sourceSessionId={activeFileTab.sourceSessionId}
               gitRefreshKey={explorerRefreshKey}
               initialDisplayMode={activeFileTab.initialDisplayMode}
-              onMentionLines={rightPanelOpen ? handleFileLineMention : undefined}
               onOpenFile={(filePath) => handleOpenFile(
                 filePath,
                 getFileName(filePath),
@@ -1710,30 +1645,9 @@ export function AppShell() {
             </div>
           )}
         </div>
-      </div>
+      </RightPanelContainer>
     </div>
-    {/* File panel toggle — always visible at top-right */}
-    <button
-      onClick={() => setRightPanelOpen((v) => !v)}
-       aria-controls="file-panel"
-       aria-expanded={rightPanelOpen}
-       title={rightPanelOpen ? translate("files.hidePanel") : translate("files.showPanel")}
-       aria-label={rightPanelOpen ? translate("files.hidePanel") : translate("files.showPanel")}
-      style={{
-        position: "fixed", top: "env(safe-area-inset-top)", right: "env(safe-area-inset-right)", zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: rightPanelOpen ? "var(--text)" : "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = rightPanelOpen ? "var(--text)" : "var(--text-muted)"; }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-      </svg>
-    </button>
+    <RightPanelToggleButton />
     {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
     {projectTrustDialogOpen && projectTrustCwd && (
       <ProjectTrustDialog
