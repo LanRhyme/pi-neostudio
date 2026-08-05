@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type MouseEvent } from "react";
+import { memo, useMemo, type MouseEvent } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { resolveLocalFileHref } from "@/lib/file-links";
 import { encodeFilePathForApi } from "@/lib/file-paths";
@@ -15,7 +15,33 @@ interface MarkdownBodyProps {
   onOpenFile?: (filePath: string) => void;
 }
 
-export function MarkdownBody({ children, className, isStreaming, cwd, onOpenFile }: MarkdownBodyProps) {
+function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }: MarkdownBodyProps) {
+  // 流式纯文本快捷路径：无 markdown 语法时跳过 react-markdown 全量解析，
+  // 直接逐字渲染 —— 消除流式期间每帧 markdown 解析的 CPU 开销
+  const isPlain = useMemo(() => {
+    if (!isStreaming) return false;
+    return children.length <= 400 && !/[#*`\[\]>_~|]/.test(children);
+  }, [children, isStreaming]);
+
+  if (isPlain) {
+    return (
+      <div className={["markdown-body", className].filter(Boolean).join(" ")}>
+        <p className="char-stream">
+          {Array.from(children).map((ch, i) => (
+            <span
+              key={i}
+              className="char-in"
+              style={{ animationDelay: `${Math.min(i * 4, 240)}ms` }}
+            >
+              {ch === " " ? "\u00A0" : ch}
+            </span>
+          ))}
+        </p>
+        {isStreaming && <span className="streaming-cursor" aria-hidden="true" />}
+      </div>
+    );
+  }
+
   const normalizedMarkdown = useMemo(() => normalizeDisplayMath(children), [children]);
   // Stable renderer identities keep stateful blocks mounted across message hover updates.
   const components = useMemo<Components>(() => ({
@@ -87,15 +113,15 @@ export function MarkdownBody({ children, className, isStreaming, cwd, onOpenFile
       );
     },
     p({ children }) {
-      // 流式输出时逐字渐显上滑（纯文本段落才启用，长文本退化为普通渲染）
-      if (isStreaming && typeof children === "string" && children.length <= 2000) {
+      // 流式输出时逐字渐显上滑（纯文本段落才启用，长文本/大段退化为普通渲染，避免大量 span 拖慢流式）
+      if (isStreaming && typeof children === "string" && children.length <= 400) {
         return (
           <p className="char-stream">
             {Array.from(children).map((ch, i) => (
               <span
                 key={i}
                 className="char-in"
-                style={{ animationDelay: `${Math.min(i * 8, 600)}ms` }}
+                style={{ animationDelay: `${Math.min(i * 4, 240)}ms` }}
               >
                 {ch === " " ? "\u00A0" : ch}
               </span>
@@ -120,3 +146,5 @@ export function MarkdownBody({ children, className, isStreaming, cwd, onOpenFile
     </div>
   );
 }
+
+export const MarkdownBody = memo(MarkdownBodyImpl);

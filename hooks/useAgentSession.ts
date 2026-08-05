@@ -386,6 +386,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const eventStreamGraceActiveRef = useRef(false);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
+  // 流式 rAF 节流：合并一帧内的多次 message_update，避免每 delta 全量重渲染
+  const streamFrameRef = useRef<number | null>(null);
+  const streamPendingMsgRef = useRef<Partial<AgentMessage> | null>(null);
   const sdkAgentActiveRef = useRef(false);
   const rpcPromptPendingRef = useRef(false);
   const notifiedPromptRunIdRef = useRef(-1);
@@ -826,6 +829,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const settleUiStage = useCallback(() => {
     const wasRunning = agentRunningRef.current;
     agentRunningRef.current = false;
+    if (streamFrameRef.current !== null) {
+      cancelAnimationFrame(streamFrameRef.current);
+      streamFrameRef.current = null;
+    }
     setAgentRunning(false);
     setAgentPhase(null);
     setRetryInfo(null);
@@ -1126,7 +1133,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           break;
         }
         if (msg) {
-          dispatch({ type: "update", message: normalizeToolCalls(msg as AgentMessage) });
+          streamPendingMsgRef.current = normalizeToolCalls(msg as AgentMessage);
+          if (streamFrameRef.current === null) {
+            streamFrameRef.current = requestAnimationFrame(() => {
+              streamFrameRef.current = null;
+              const pending = streamPendingMsgRef.current;
+              if (pending) dispatch({ type: "update", message: pending });
+            });
+          }
         }
         setAgentPhase(null);
         break;
