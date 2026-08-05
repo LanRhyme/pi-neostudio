@@ -548,11 +548,11 @@ type ThinkingLevel = typeof THINKING_LEVELS[number];
 
 const LEVEL_COLORS: Record<ThinkingLevel, string> = {
   off:     "var(--text-dim)",
-  minimal: "#6b7280",
+  minimal: "var(--text-muted)",
   low:     "var(--info)",
-  medium:  "#a78bfa",
+  medium:  "var(--info)",
   high:    "var(--warning)",
-  xhigh:   "#fb923c",
+  xhigh:   "var(--warning)",
   max:     "var(--danger)",
 };
 
@@ -911,10 +911,10 @@ function ModelDetail({
                 maxWidth: 260,
                 height: 24,
                 padding: "0 8px",
-                border: `1px solid ${testState.phase === "error" ? "color-mix(in srgb, var(--danger) 14%, var(--bg))" : testState.phase === "success" ? "#bbf7d0" : "var(--border)"}`,
+                border: `1px solid ${testState.phase === "error" ? "color-mix(in srgb, var(--danger) 14%, var(--bg))" : testState.phase === "success" ? "color-mix(in srgb, var(--success) 16%, var(--bg))" : "var(--border)"}`,
                 borderRadius: 4,
-                background: testState.phase === "error" ? "color-mix(in srgb, var(--danger) 12%, var(--bg))" : testState.phase === "success" ? "#dcfce7" : "#e5e7eb",
-                color: "#111827",
+                background: testState.phase === "error" ? "color-mix(in srgb, var(--danger) 12%, var(--bg))" : testState.phase === "success" ? "color-mix(in srgb, var(--success) 12%, var(--bg))" : "var(--bg-panel)",
+                color: "var(--text)",
                 fontSize: 11,
                 display: "inline-flex",
                 alignItems: "center",

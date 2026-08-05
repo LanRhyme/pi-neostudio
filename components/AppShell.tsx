@@ -1027,7 +1027,7 @@ export function AppShell() {
                 background: "none",
                 border: "none",
                 borderRight: "1px solid var(--border)",
-                color: "#d97706",
+                color: "var(--warning)",
                 cursor: "pointer",
                 flexShrink: 0,
                 fontSize: 11,
