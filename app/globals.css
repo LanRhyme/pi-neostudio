@@ -1166,6 +1166,27 @@ button:active {
 .dialog-pop {
   animation: dialog-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+@keyframes dialog-pop-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.97) translateY(4px); }
+}
+.dialog-pop-out {
+  animation: dialog-pop-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes dialog-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes dialog-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.dialog-backdrop {
+  animation: dialog-backdrop-in 180ms ease both;
+}
+.dialog-backdrop.closing {
+  animation: dialog-backdrop-out 180ms ease both;
+}
 
 /* 预设 pill */
 @keyframes pill-in {
