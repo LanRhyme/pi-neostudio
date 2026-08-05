@@ -273,14 +273,23 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     prevScrollDistanceRef.current = null;
   }, [visibleCount, scrollContainerRef]);
   // 自动滚动跟随：消息/流式更新时若用户停在底部则滚到底
-  const lastScrollBottomRef = useRef(0);
+  // 双 rAF 确保 DOM 高度已更新（流式内容每帧增长，effect 执行时可能尚未布局）
+  const scrollToBottomRafRef = useRef<number | null>(null);
   useEffect(() => {
+    if (!stickToBottomRef.current) return;
     const container = scrollContainerRef.current;
-    if (!container || !stickToBottomRef.current) return;
-    if (container.scrollHeight !== lastScrollBottomRef.current) {
-      lastScrollBottomRef.current = container.scrollHeight;
+    if (!container) return;
+    if (scrollToBottomRafRef.current !== null) cancelAnimationFrame(scrollToBottomRafRef.current);
+    scrollToBottomRafRef.current = requestAnimationFrame(() => {
+      scrollToBottomRafRef.current = null;
       container.scrollTop = container.scrollHeight;
-    }
+    });
+    return () => {
+      if (scrollToBottomRafRef.current !== null) {
+        cancelAnimationFrame(scrollToBottomRafRef.current);
+        scrollToBottomRafRef.current = null;
+      }
+    };
   }, [streamState.streamingMessage, messages.length, scrollContainerRef]);
 
   const handleScroll = useCallback(() => {
@@ -747,10 +756,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 } as BashExecutionMessage}
                 sessionId={session?.id ?? sessionIdRef.current ?? undefined}
               />
-            )}
-
-            {agentRunning && (
-              <div style={{ height: scrollContainerRef.current ? scrollContainerRef.current.clientHeight : "80vh" }} />
             )}
 
             <div ref={messagesEndRef} />
