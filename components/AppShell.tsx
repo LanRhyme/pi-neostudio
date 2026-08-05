@@ -830,7 +830,7 @@ export function AppShell() {
       {/* Center: chat */}
       <div className="page-enter-up" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         {/* Top bar with sidebar toggle */}
-        <div ref={topBarRef} className="page-enter-top" style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
+        <div ref={topBarRef} className="page-enter-top" style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)", position: "relative", zIndex: 100 }}>
           <SidebarToggleButton size={TOP_BAR_ICON_BUTTON_SIZE} />
           <button
             onClick={(e) => {
@@ -1296,22 +1296,27 @@ export function AppShell() {
           })()}
           {/* Top panel dropdown — shared, only one active at a time */}
           {activeTopPanel && topPanelPos && (
-            <div className="panel-content-in" style={{
-              position: "fixed",
-              top: topPanelPos.top,
-              left: topPanelPos.left,
-              width: topPanelPos.width,
-              maxHeight: `calc(100dvh - ${topPanelPos.top}px)`,
-              overflowY: "auto",
-              zIndex: 500,
-              background: "var(--bg-panel)",
-              borderLeft: "1px solid var(--border)",
-              borderRight: "1px solid var(--border)",
-              borderBottom: "1px solid var(--border)",
-              borderBottomLeftRadius: 6,
-              borderBottomRightRadius: 6,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-            }}>
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 490 }}
+                onClick={() => setActiveTopPanel(null)}
+              />
+              <div className="panel-content-in" style={{
+                position: "fixed",
+                top: topPanelPos.top,
+                left: topPanelPos.left,
+                width: topPanelPos.width,
+                maxHeight: `calc(100dvh - ${topPanelPos.top}px)`,
+                overflowY: "auto",
+                zIndex: 500,
+                background: "var(--bg-panel)",
+                borderLeft: "1px solid var(--border)",
+                borderRight: "1px solid var(--border)",
+                borderBottom: "1px solid var(--border)",
+                borderBottomLeftRadius: 6,
+                borderBottomRightRadius: 6,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+              }}>
               {activeTopPanel === "language" && (
                 <div
                   role="menu"
@@ -1527,6 +1532,7 @@ export function AppShell() {
                 </div>
               )}
             </div>
+            </>
           )}
 
         </div>

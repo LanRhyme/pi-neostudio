@@ -306,20 +306,28 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
            {!compact && <span>{t("i18n.branches")}</span>}
         </button>
         {open && dropdownPos && (
-          <div className="panel-content-in" style={{
-            position: "fixed",
-            top: dropdownPos.top,
-            left: dropdownPos.left,
-            width: dropdownPos.width,
-            background: "var(--bg-panel)",
-            borderLeft: "1px solid var(--border)",
-            borderRight: "1px solid var(--border)",
-            borderBottom: "1px solid var(--border)",
-            borderBottomLeftRadius: 6,
-            borderBottomRightRadius: 6,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-            zIndex: 500,
-          }}>
+          <>
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 490 }}
+              onClick={() => {
+                if (openProp === undefined) setOpenInternal(false);
+                else onToggle?.();
+              }}
+            />
+            <div className="panel-content-in" style={{
+              position: "fixed",
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+              background: "var(--bg-panel)",
+              borderLeft: "1px solid var(--border)",
+              borderRight: "1px solid var(--border)",
+              borderBottom: "1px solid var(--border)",
+              borderBottomLeftRadius: 6,
+              borderBottomRightRadius: 6,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+              zIndex: 500,
+            }}>
             {hasContent && firstNode ? (
               <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
                 {firstNode.children.map((child, idx) => (
@@ -340,6 +348,7 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
               </div>
             )}
           </div>
+          </>
         )}
       </div>
     );
