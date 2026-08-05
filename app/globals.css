@@ -1055,13 +1055,74 @@ span.linenumber {
 
 /* ─── lpigui 动画增强 ─────────────────────────────── */
 
-/* 消息卡片进入动画 */
+/* 消息卡片进入动画（弹性） */
 @keyframes msg-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  0%   { opacity: 0; transform: translateY(10px) scale(0.98); }
+  60%  { opacity: 1; transform: translateY(-1px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 .msg-enter {
-  animation: msg-in 240ms ease-out both;
+  animation: msg-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 用户气泡 spring 弹出 */
+@keyframes msg-pop {
+  0%   { opacity: 0; transform: scale(0.88) translateY(8px); }
+  55%  { opacity: 1; transform: scale(1.03) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.msg-pop {
+  animation: msg-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 工具卡片滑入 */
+@keyframes tool-card-in {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.tool-card-in {
+  animation: tool-card-in 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+/* thinking 展开平滑过渡 */
+.thinking-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.thinking-expand.open {
+  grid-template-rows: 1fr;
+}
+.thinking-expand > div {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* 侧边栏/列表项 stagger 进入 */
+@keyframes list-item-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.list-item-in {
+  animation: list-item-in 300ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+/* 按钮按下微缩放（通用触感） */
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+button:active {
+  transform: scale(0.96);
+  transition: transform 90ms ease !important;
+}
+
+/* 会话切换过渡增强 */
+@keyframes session-switch-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.session-switch {
+  animation: session-switch-in 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
 /* 流式内容光标 */
@@ -1119,8 +1180,10 @@ span.linenumber {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .msg-enter, .dialog-pop, .preset-pill {
+  .msg-enter, .msg-pop, .tool-card-in, .dialog-pop, .preset-pill,
+  .char-in, .list-item-in, .session-switch, .thinking-expand, .pi-logo {
     animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -1193,4 +1256,44 @@ html[data-accent="custom"] {
 html[data-accent="custom"].dark {
   --accent: var(--accent-custom, #a3b592);
   --accent-hover: color-mix(in srgb, var(--accent-custom, #a3b592) 82%, #ffffff);
+}
+
+/* 流式逐字渐显上滑（弹性 overshoot） */
+@keyframes char-in {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.92); }
+  60%  { opacity: 1; transform: translateY(-1px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.char-stream {
+  white-space: pre-wrap;
+}
+.char-in {
+  display: inline-block;
+  animation: char-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: opacity, transform;
+}
+
+/* 会话切换过渡 */
+@keyframes session-switch-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.session-switch {
+  animation: session-switch-in 220ms ease-out both;
+}
+
+/* π logo 呼吸光晕 + 浮动 */
+@keyframes pi-breathe {
+  0%, 100% { text-shadow: 0 0 0 rgba(37, 99, 235, 0), 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent); transform: translateY(0); }
+  50% { text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 34px color-mix(in srgb, var(--accent) 35%, transparent); transform: translateY(-2px); }
+}
+.pi-logo {
+  display: inline-block;
+  animation: pi-breathe 3.2s ease-in-out infinite;
+}
+
+/* 输入框聚焦发光 */
+.chat-input-shell:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), 0 8px 24px -12px rgba(15,23,42,0.12) !important;
 }

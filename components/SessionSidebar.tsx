@@ -1526,9 +1526,13 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             {t("sidebar.noSessions")}
           </div>
         )}
-        {sessionTree.map((node) => (
-          <SessionTreeItem
+        {sessionTree.map((node, idx) => (
+          <div
             key={node.session.id}
+            className="list-item-in"
+            style={{ animationDelay: `${Math.min(idx * 30, 420)}ms` }}
+          >
+          <SessionTreeItem
             node={node}
             selectedSessionId={selectedSessionId}
             runningSessionIds={runningSessionIds}
@@ -1541,6 +1545,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             }}
             depth={0}
           />
+          </div>
         ))}
       </div>
 

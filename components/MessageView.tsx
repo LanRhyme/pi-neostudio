@@ -267,6 +267,7 @@ function UserMessageView({
 
 	return (
 		<div
+			className="msg-pop"
 			style={{
 				marginBottom: 16,
 				display: "flex",
@@ -1085,23 +1086,25 @@ function ThinkingBlock({
 					</span>
 				)}
 			</button>
-			{expanded && (
-				<div
-					style={{
-						padding: "8px 10px",
-						color: error ? "#f87171" : "var(--text-muted)",
-						fontSize: 12,
-						lineHeight: 1.6,
-						whiteSpace: "pre-wrap",
-						background: "var(--bg-panel)",
-						borderTop: "1px solid var(--border)",
-					}}
-				>
-					{loading
-						? t("i18n.loadingThinking")
-						: (error ?? (block.deferred ? content : block.thinking))}
+			<div className={`thinking-expand${expanded ? " open" : ""}`}>
+				<div>
+					<div
+						style={{
+							padding: "8px 10px",
+							color: error ? "#f87171" : "var(--text-muted)",
+							fontSize: 12,
+							lineHeight: 1.6,
+							whiteSpace: "pre-wrap",
+							background: "var(--bg-panel)",
+							borderTop: "1px solid var(--border)",
+						}}
+					>
+						{loading
+							? t("i18n.loadingThinking")
+							: (error ?? (block.deferred ? content : block.thinking))}
+					</div>
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }
@@ -1135,6 +1138,7 @@ function ToolCallBlock({
 
 	return (
 		<div
+			className="tool-card-in"
 			style={{
 				borderRadius: 7,
 				overflow: "hidden",
