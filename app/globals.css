@@ -27,46 +27,46 @@
   --text: #1a1a1a;
   --text-muted: #6b7280;
   --text-dim: #9ca3af;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  --accent: #0869ff;
+  --accent-hover: #0555cc;
   --user-bg: color-mix(in srgb, var(--accent) 7%, #ffffff);
   --assistant-bg: #ffffff;
   --tool-bg: #f9fafb;
   --bg-subtle: rgba(0,0,0,0.03);
-  --danger: #a05656;
-  --danger-hover: #8c4848;
-  --success: #6a8a5a;
-  --success-hover: #5a774c;
-  --warning: #a08050;
-  --warning-hover: #8c6c42;
-  --info: #5a7a8a;
-  --info-hover: #4c6876;
+  --danger: #b05252;
+  --danger-hover: #964646;
+  --success: #5f8f5a;
+  --success-hover: #527f4d;
+  --warning: #a67c3d;
+  --warning-hover: #916a32;
+  --info: #4a7fa8;
+  --info-hover: #3f6f93;
 }
 
 html.dark {
-  /* 纯中性灰阶（R=G=B，无任何色彩偏向） */
-  --bg: #0a0a0a;
-  --bg-panel: #121212;
-  --bg-hover: #1a1a1a;
-  --bg-selected: #232323;
-  --border: #262626;
-  --text: #fafafa;
-  --text-muted: #a1a1a1;
-  --text-dim: #717171;
-  --accent: #60a5fa;
-  --accent-hover: #93c5fd;
-  --user-bg: color-mix(in srgb, var(--accent) 10%, #0a0a0a);
-  --assistant-bg: #0d0d0d;
-  --tool-bg: #141414;
-  --bg-subtle: rgba(255,255,255,0.04);
-  --danger: #c98f88;
-  --danger-hover: #d8a29b;
-  --success: #9cb089;
-  --success-hover: #adbf9b;
-  --warning: #c6ad82;
-  --warning-hover: #d3bd96;
-  --info: #93aebf;
-  --info-hover: #a5bdcc;
+  /* Codex 风格：近黑中性背景 + OpenAI 蓝 accent + solarized 柔和语义色 */
+  --bg: #0d0d0d;
+  --bg-panel: #151515;
+  --bg-hover: #1e1e1e;
+  --bg-selected: #272727;
+  --border: #2a2a2a;
+  --text: #f0f0f0;
+  --text-muted: #a3a3a3;
+  --text-dim: #737373;
+  --accent: #3a7bff;
+  --accent-hover: #5c94ff;
+  --user-bg: color-mix(in srgb, var(--accent) 10%, #0d0d0d);
+  --assistant-bg: #111111;
+  --tool-bg: #161616;
+  --bg-subtle: rgba(255,255,255,0.05);
+  --danger: #e5736e;
+  --danger-hover: #ef8a85;
+  --success: #8fbd8a;
+  --success-hover: #a3cca0;
+  --warning: #d9a66b;
+  --warning-hover: #e3b685;
+  --info: #7fa8c9;
+  --info-hover: #93bad8;
 }
 
 /* Theme toggle: circular wipe via View Transitions API.
