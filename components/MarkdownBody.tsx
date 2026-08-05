@@ -118,7 +118,7 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
       }
       return <p>{children}</p>;
     },
-  }), [cwd, animateChars, onOpenFile]);
+  }), [cwd, animateChars, onOpenFile, isStreaming]);
   if (isPlain) {
     return (
       <div className={["markdown-body", className].filter(Boolean).join(" ")}>

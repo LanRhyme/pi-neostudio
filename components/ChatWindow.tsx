@@ -300,7 +300,7 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
     if (!container) return;
     stickToBottomRef.current =
       container.scrollHeight - container.scrollTop - container.clientHeight < 120;
-  }, []);
+  }, [scrollContainerRef]);
 
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.

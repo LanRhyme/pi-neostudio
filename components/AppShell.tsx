@@ -9,7 +9,7 @@ import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SettingsDialogHost } from "./SettingsDialog";
-import { SidebarToggleButton, SidebarOverlay, SidebarPanel, RightPanelOverlay, RightPanelContainer, RightPanelToggleButton } from "./panel-widgets";
+import { SidebarToggleButton, SidebarOverlay, SidebarPanel, RightPanelOverlay, RightPanelContainer, RightPanelToggleButton, RightPanelSeparator } from "./panel-widgets";
 import { settingsDialogStore } from "@/lib/settings-dialog-store";
 import { UiSettingsProvider } from "@/hooks/useUiSettings";
 import { uiPanelStore } from "@/lib/ui-panel-store";
@@ -17,7 +17,7 @@ import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator } from "./BranchNavigator";
-import { ACCENTS, useTheme, type Accent } from "@/hooks/useTheme";
+import { ACCENTS, useTheme } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -142,10 +142,18 @@ export function AppShell() {
   useEffect(() => {
     setMobileSidebarReady(true);
   }, []);
+  // 右面板打开/关闭时 re-clamp 宽度（订阅 store 但不触发 AppShell 重渲染）
   useEffect(() => {
-    if (!uiPanelStore.isRightPanelOpen()) return;
-    reclampSidebarWidth();
-    reclampRightPanelWidth();
+    if (uiPanelStore.isRightPanelOpen()) {
+      reclampSidebarWidth();
+      reclampRightPanelWidth();
+    }
+    return uiPanelStore.subscribe(() => {
+      if (uiPanelStore.isRightPanelOpen()) {
+        reclampSidebarWidth();
+        reclampRightPanelWidth();
+      }
+    });
   }, [reclampRightPanelWidth, reclampSidebarWidth]);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
@@ -217,11 +225,6 @@ export function AppShell() {
   const openSessionStatsPanel = useCallback(() => {
     if (isMobile) uiPanelStore.setSidebarOpen(false);
     setActiveTopPanel("session");
-  }, [isMobile]);
-
-  const handleSidebarToggle = useCallback(() => {
-    if (isMobile) setActiveTopPanel(null);
-    uiPanelStore.toggleSidebar();
   }, [isMobile]);
 
   useEffect(() => {
@@ -1589,15 +1592,11 @@ export function AppShell() {
       </div>
 
       <RightPanelOverlay />
-      {uiPanelStore.isRightPanelOpen() && (
-        <div
-          {...rightPanelResizer.separatorProps}
-          aria-controls="file-panel"
-          className={`panel-resize-handle right-panel-resize-handle${rightPanelResizer.isResizing ? " is-resizing" : ""}`}
-          data-resize-handle="right-panel"
-          title={`${translate("layout.resizeFilePanel")}: ${translate("layout.resizeHint")}`}
-        />
-      )}
+      <RightPanelSeparator
+        resizing={rightPanelResizer.isResizing}
+        separatorProps={rightPanelResizer.separatorProps}
+        separatorTitle={`${translate("layout.resizeFilePanel")}: ${translate("layout.resizeHint")}`}
+      />
 
       {/* Right panel: file viewer — always mounted, width animated via CSS */}
       <RightPanelContainer
@@ -1633,6 +1632,7 @@ export function AppShell() {
               sourceSessionId={activeFileTab.sourceSessionId}
               gitRefreshKey={explorerRefreshKey}
               initialDisplayMode={activeFileTab.initialDisplayMode}
+              onMentionLines={handleFileLineMention}
               onOpenFile={(filePath) => handleOpenFile(
                 filePath,
                 getFileName(filePath),

@@ -1124,10 +1124,11 @@ function ThinkingBlock({
 					>
 						{thinkingText !== "" ? (
 							<MarkdownBody
-								children={thinkingText}
 								isStreaming={isStreaming}
 								cwd={undefined}
-							/>
+							>
+								{thinkingText}
+							</MarkdownBody>
 						) : null}
 					</div>
 				</div>
