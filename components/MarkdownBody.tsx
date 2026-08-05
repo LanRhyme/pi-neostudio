@@ -16,6 +16,8 @@ interface MarkdownBodyProps {
 }
 
 function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }: MarkdownBodyProps) {
+  // 所有 hooks 无条件执行（遵守 Rules of Hooks），流式纯文本仅做条件返回
+  const normalizedMarkdown = useMemo(() => normalizeDisplayMath(children), [children]);
   // 流式纯文本快捷路径：无 markdown 语法时跳过 react-markdown 全量解析，
   // 直接逐字渲染 —— 消除流式期间每帧 markdown 解析的 CPU 开销
   const isPlain = useMemo(() => {
@@ -41,8 +43,6 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
       </div>
     );
   }
-
-  const normalizedMarkdown = useMemo(() => normalizeDisplayMath(children), [children]);
   // Stable renderer identities keep stateful blocks mounted across message hover updates.
   const components = useMemo<Components>(() => ({
     code({ className, children, ...props }) {
