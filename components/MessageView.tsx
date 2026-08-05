@@ -777,12 +777,12 @@ function AssistantMessageView({
 											(() => {
 												const bg =
 													tps >= 50
-														? "#53b3cb"
+														? "var(--info)"
 														: tps >= 30
-															? "#9bc53d"
+															? "var(--success)"
 															: tps >= 15
-																? "#f9c22e"
-																: "#e01a4f";
+																? "var(--warning)"
+																: "var(--info)";
 												return (
 													<span
 														style={{
@@ -836,7 +836,7 @@ function AssistantMessageView({
 						border: "1px solid rgba(239,68,68,0.3)",
 						borderRadius: 6,
 						background: "rgba(239,68,68,0.07)",
-						color: "#ef4444",
+						color: "var(--danger)",
 						fontFamily: "var(--font-mono)",
 						fontSize: 12,
 						lineHeight: 1.5,
@@ -1091,7 +1091,7 @@ function ThinkingBlock({
 					<div
 						style={{
 							padding: "8px 10px",
-							color: error ? "#f87171" : "var(--text-muted)",
+							color: error ? "var(--danger)" : "var(--text-muted)",
 							fontSize: 12,
 							lineHeight: 1.6,
 							whiteSpace: "pre-wrap",
@@ -1169,7 +1169,7 @@ function ToolCallBlock({
 			>
 				<span
 					style={{
-						color: isError ? "#f87171" : "#16a34a",
+						color: isError ? "var(--danger)" : "var(--success)",
 						fontFamily: "var(--font-mono)",
 						fontWeight: 600,
 						fontSize: 11,
@@ -1395,9 +1395,9 @@ function SplitDiffCellView({
 		cell.type === "added" ? "+" : cell.type === "removed" ? "-" : " ";
 	const markerColor =
 		cell.type === "added"
-			? "#22c55e"
+			? "var(--success)"
 			: cell.type === "removed"
-				? "#f87171"
+				? "var(--danger)"
 				: "var(--text-dim)";
 
 	return (
@@ -1485,9 +1485,9 @@ function PatchTextView({ text }: { text: string }) {
 								: "transparent";
 				const color =
 					kind === "added"
-						? "#22c55e"
+						? "var(--success)"
 						: kind === "removed"
-							? "#f87171"
+							? "var(--danger)"
 							: kind === "hunk"
 								? "var(--accent)"
 								: "var(--text)";
@@ -1500,9 +1500,9 @@ function PatchTextView({ text }: { text: string }) {
 							background: bg,
 							borderLeft:
 								kind === "added"
-									? "3px solid #22c55e"
+									? "3px solid var(--success)"
 									: kind === "removed"
-										? "3px solid #f87171"
+										? "3px solid var(--danger)"
 										: kind === "hunk"
 											? "3px solid var(--accent)"
 											: "3px solid transparent",
@@ -1590,7 +1590,7 @@ function PairedResult({
 					margin: 0,
 					padding: "8px 10px",
 					color: isError
-						? "#f87171"
+						? "var(--danger)"
 						: isEmpty
 							? "var(--text-dim)"
 							: "var(--text-muted)",

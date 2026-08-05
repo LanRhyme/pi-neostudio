@@ -57,7 +57,7 @@ function createWindow(url) {
 		minHeight: 600,
 		title: "Pi Web",
 		autoHideMenuBar: true,
-		backgroundColor: nativeTheme.shouldUseDarkColors ? "#101014" : "#ffffff",
+		backgroundColor: nativeTheme.shouldUseDarkColors ? "#141414" : "#ffffff",
 		webPreferences: {
 			contextIsolation: true,
 			nodeIntegration: false,

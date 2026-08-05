@@ -33,23 +33,39 @@
   --assistant-bg: #ffffff;
   --tool-bg: #f9fafb;
   --bg-subtle: rgba(0,0,0,0.03);
+  --danger: #a05656;
+  --danger-hover: #8c4848;
+  --success: #6a8a5a;
+  --success-hover: #5a774c;
+  --warning: #a08050;
+  --warning-hover: #8c6c42;
+  --info: #5a7a8a;
+  --info-hover: #4c6876;
 }
 
 html.dark {
-  --bg: #101014;
-  --bg-panel: #16161c;
-  --bg-hover: #1c1c24;
-  --bg-selected: #262630;
-  --border: #2a2a33;
+  --bg: #141414;
+  --bg-panel: #1a1a1a;
+  --bg-hover: #202020;
+  --bg-selected: #2a2a2a;
+  --border: #2e2e2e;
   --text: #e8e8e8;
   --text-muted: #9ca3af;
   --text-dim: #6b7280;
   --accent: #60a5fa;
   --accent-hover: #93c5fd;
-  --user-bg: color-mix(in srgb, var(--accent) 12%, #101014);
-  --assistant-bg: #121218;
-  --tool-bg: #15151c;
+  --user-bg: color-mix(in srgb, var(--accent) 12%, #141414);
+  --assistant-bg: #151515;
+  --tool-bg: #181818;
   --bg-subtle: rgba(255,255,255,0.04);
+  --danger: #c08a84;
+  --danger-hover: #d09a94;
+  --success: #94b184;
+  --success-hover: #a5c095;
+  --warning: #c4a878;
+  --warning-hover: #d2b98c;
+  --info: #8fb0c4;
+  --info-hover: #a0bdd0;
 }
 
 /* Theme toggle: circular wipe via View Transitions API.
