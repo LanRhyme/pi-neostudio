@@ -5,6 +5,7 @@ import type { SessionInfo } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { FileExplorer, type FileExplorerHandle } from "./FileExplorer";
+import { GitPanel } from "./GitPanel";
 
 declare global {
   interface Window {
@@ -89,6 +90,7 @@ interface Props {
   onExplorerRefresh?: () => void;
   onAtMention?: (relativePath: string, isDir: boolean) => void;
   onAtMentions?: (relativePaths: string[]) => void;
+  onInsertText?: (text: string) => void;
 }
 
 interface WorktreeEntry {
@@ -235,7 +237,7 @@ function AnimatedDropdown({ open, children, style }: { open: boolean; children: 
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.96)",
         transformOrigin: "top center",
-        transition: `opacity ${DROPDOWN_ANIMATION_MS}ms ease, transform ${DROPDOWN_ANIMATION_MS}ms ease`,
+        transition: `opacity ${DROPDOWN_ANIMATION_MS}ms cubic-bezier(0.05, 0.7, 0.1, 1), transform ${DROPDOWN_ANIMATION_MS}ms cubic-bezier(0.05, 0.7, 0.1, 1)`,
         pointerEvents: open ? "auto" : "none",
       }}
     >
@@ -345,7 +347,7 @@ function PiWebTitle() {
   const [scrambling, setScrambling] = useState(false);
   const revertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const target = showVersion ? `${process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}p${process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}` : "Pi Web";
+  const target = showVersion ? `${process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}p${process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}` : "Pi NeoStudio";
   const display = useScramble(target, scrambling);
 
   const triggerScramble = useCallback((toVersion: boolean) => {
@@ -383,7 +385,7 @@ function PiWebTitle() {
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onInsertText }: Props) {
   const { t } = useI18n();
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -412,6 +414,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const wtDropdownRef = useRef<HTMLDivElement>(null);
   const wtNewInputRef = useRef<HTMLInputElement>(null);
   const [explorerOpen, setExplorerOpen] = useState(true);
+  const [activeBottomTab, setActiveBottomTab] = useState<"files" | "git">("files");
   const [explorerKey, setExplorerKey] = useState(0);
   const [explorerUploadBusy, setExplorerUploadBusy] = useState(false);
   const [changesCount, setChangesCount] = useState(0);
@@ -457,6 +460,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       setError(String(e));
     } finally {
       if (showLoading) setLoading(false);
+      window.dispatchEvent(new Event("pi-sidebar-ready"));
     }
   }, []);
 
@@ -860,6 +864,13 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
   // Build parent-child tree within the filtered set
   const sessionTree = buildSessionTree(filteredSessions);
+
+  const effectiveCwd = selectedCwdProp || selectedCwd;
+  useEffect(() => {
+    if (!explorerOpen || !effectiveCwd) {
+      window.dispatchEvent(new Event("pi-file-ready"));
+    }
+  }, [explorerOpen, effectiveCwd]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
@@ -1513,7 +1524,11 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       </div>
 
       {/* Session list */}
-      <div style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}>
+      <div
+        key={selectedCwd ?? "all"}
+        className="panel-content-in"
+        style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}
+      >
         {loading && (
           <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
             {t("sidebar.loading")}
@@ -1565,34 +1580,30 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           }}
         >
           <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-            <button
-              onClick={() => setExplorerOpen((v) => !v)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                flex: 1,
-                padding: "6px 10px",
-                background: "none",
-                border: "none",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                textAlign: "left",
-              }}
-            >
-              <svg
-                width="9" height="9" viewBox="0 0 10 10" fill="none"
-                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-                style={{ transform: explorerOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}
+            <div style={{ display: "flex", gap: 16, flex: 1, padding: "6px 10px" }}>
+              <button
+                onClick={() => { if (!explorerOpen) setExplorerOpen(true); setActiveBottomTab("files"); }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase",
+                  color: activeBottomTab === "files" ? "var(--text)" : "var(--text-muted)",
+                  transition: "color 0.1s"
+                }}
               >
-                <polyline points="3 2 7 5 3 8" />
-              </svg>
-              {t("files.explorer")}
-            </button>
+                {t("files.explorer")}
+              </button>
+              <button
+                onClick={() => { if (!explorerOpen) setExplorerOpen(true); setActiveBottomTab("git"); }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase",
+                color: activeBottomTab === "git" ? "var(--text)" : "var(--text-muted)",
+                  transition: "color 0.1s"
+                }}
+              >
+                {t("git.sourceControl") || "SOURCE CONTROL"}
+              </button>
+            </div>
             {explorerOpen && changesCount > 0 && (
               <ToolbarIconButton
                 onClick={() => setChangesCollapsed((v) => !v)}
@@ -1648,7 +1659,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               )}
             </ToolbarIconButton>
           </div>
-          {explorerOpen && (
+          {explorerOpen && activeBottomTab === "files" && (
             <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
               <FileExplorer
                 ref={fileExplorerRef}
@@ -1660,6 +1671,15 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 onUploadBusyChange={setExplorerUploadBusy}
                 changesCollapsed={changesCollapsed}
                 onChangesCountChange={setChangesCount}
+              />
+            </div>
+          )}
+          {explorerOpen && activeBottomTab === "git" && (
+            <div style={{ flex: 1, overflowY: "hidden", overflowX: "hidden" }}>
+              <GitPanel
+                cwd={selectedCwd ?? selectedCwdProp!}
+                onOpenFile={onOpenFile ?? (() => {})}
+                onInsertText={onInsertText}
               />
             </div>
           )}

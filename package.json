@@ -1,14 +1,14 @@
 {
-  "name": "@agegr/pi-web",
+  "name": "pi-neostudio",
   "version": "0.8.6",
   "description": "Web UI for the pi coding agent",
-  "homepage": "https://github.com/agegr/pi-web#readme",
+  "homepage": "https://github.com/LanRhyme/pi-neostudio#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/agegr/pi-web.git"
+    "url": "git+https://github.com/LanRhyme/pi-neostudio.git"
   },
   "bugs": {
-    "url": "https://github.com/agegr/pi-web/issues"
+    "url": "https://github.com/LanRhyme/pi-neostudio/issues"
   },
   "license": "MIT",
   "engines": {
@@ -44,6 +44,8 @@
     "@earendil-works/pi-ai": "0.83.0",
     "@earendil-works/pi-coding-agent": "0.83.0",
     "@earendil-works/pi-tui": "0.83.0",
+    "@types/animejs": "^3.1.13",
+    "animejs": "^3.2.2",
     "next": "16.2.12",
     "proper-lockfile": "4.1.2",
     "react": "^19.2.4",

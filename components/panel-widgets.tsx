@@ -91,7 +91,7 @@ export function SidebarOverlay({ mobilePending }: { mobilePending: boolean }) {
 				background: "rgba(0,0,0,0.4)",
 				opacity: open ? 1 : 0,
 				pointerEvents: open ? "auto" : "none",
-				transition: "opacity 0.25s ease",
+				transition: "opacity 280ms cubic-bezier(0.2, 0, 0, 1)",
 			}}
 		/>
 	);
@@ -104,6 +104,7 @@ export function SidebarPanel({
 	separatorProps,
 	width,
 	separatorTitle,
+	className,
 	children,
 }: {
 	mobilePending: boolean;
@@ -114,6 +115,7 @@ export function SidebarPanel({
 	};
 	width: number;
 	separatorTitle: string;
+	className?: string;
 	children: ReactNode;
 }) {
 	const open = useSyncExternalStore(
@@ -126,12 +128,11 @@ export function SidebarPanel({
 			<div
 				ref={panelRef}
 				id="session-sidebar"
-				className={`sidebar-container${open ? " sidebar-open" : " sidebar-closed"}${mobilePending ? "" : " sidebar-mobile-pending"}${resizing ? " sidebar-resizing" : ""}`}
+				className={`sidebar-container${open ? " sidebar-open" : " sidebar-closed"}${mobilePending ? "" : " sidebar-mobile-pending"}${resizing ? " sidebar-resizing" : ""}${className ? ` ${className}` : ""}`}
 				style={
 					{
 						"--sidebar-width": `${width}px`,
 						background: "var(--bg-panel)",
-						borderRight: "1px solid var(--border)",
 						display: "flex",
 						flexDirection: "column",
 						flexShrink: 0,
@@ -143,16 +144,20 @@ export function SidebarPanel({
 			>
 				{children}
 			</div>
-			{open && (
-				<div
-					{...separatorProps}
-					aria-controls="session-sidebar"
-					className={`panel-resize-handle sidebar-resize-handle${resizing ? " is-resizing" : ""}`}
-					data-resize-handle="sidebar"
-					title={separatorTitle}
-					style={{ flexShrink: 0 }}
-				/>
-			)}
+			<div
+				{...separatorProps}
+				suppressHydrationWarning
+				aria-controls="session-sidebar"
+				className={`panel-resize-handle sidebar-resize-handle${resizing ? " is-resizing" : ""}`}
+				data-resize-handle="sidebar"
+				title={separatorTitle}
+				style={{
+					flexShrink: 0,
+					opacity: open ? 1 : 0,
+					pointerEvents: open ? "auto" : "none",
+					transition: "opacity 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+				}}
+			/>
 		</>
 	);
 }
@@ -167,14 +172,19 @@ export function RightPanelSeparator({
   separatorTitle: string;
 }) {
   const open = useSyncExternalStore(uiPanelStore.subscribe, uiPanelStore.isRightPanelOpen, uiPanelStore.isRightPanelOpen);
-  if (!open) return null;
   return (
     <div
       {...separatorProps}
+      suppressHydrationWarning
       aria-controls="file-panel"
       className={`panel-resize-handle right-panel-resize-handle${resizing ? " is-resizing" : ""}`}
       data-resize-handle="right-panel"
       title={separatorTitle}
+      style={{
+        opacity: open ? 1 : 0,
+        pointerEvents: open ? "auto" : "none",
+        transition: "opacity 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
     />
   );
 }
@@ -220,7 +230,6 @@ export function RightPanelContainer({
 			style={{
 				display: "flex",
 				flexDirection: "column",
-				borderLeft: "1px solid var(--border)",
 				background: "var(--bg)",
 			}}
 		>

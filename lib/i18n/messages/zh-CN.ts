@@ -1,6 +1,6 @@
 import type { LocalePlugin } from "../types";
 
-/** Pi Web 内置简体中文语言包。 */
+/** Pi NeoStudio 内置简体中文语言包。 */
 export const zhCNLocale: LocalePlugin = {
   id: "zh-CN",
   label: "简体中文",
@@ -447,5 +447,21 @@ export const zhCNLocale: LocalePlugin = {
     "settings.reset": "恢复默认",
     "i18n.before": "之前",
     "i18n.after": "之后",
+    "git.sourceControl": "源代码管理",
+    "git.commit": "提交",
+    "git.commitPlaceholder": "提交信息 (Ctrl+Enter 提交)",
+    "git.generateAI": "AI 生成提交信息",
+    "git.generating": "生成中...",
+    "git.stagedChanges": "已暂存的更改",
+    "git.changes": "更改",
+    "git.stageAll": "暂存所有更改",
+    "git.unstageAll": "取消暂存所有更改",
+    "git.stage": "暂存",
+    "git.unstage": "取消暂存",
+    "git.discard": "放弃更改",
+    "git.history": "提交历史",
+    "git.noChanges": "没有更改",
+    "git.insertCommit": "插入到输入框",
+    "git.copyHash": "复制哈希",
   },
 };

@@ -784,16 +784,19 @@ function DocumentViewer({ filePath, cwd, sourceSessionId }: Props) {
 }
 
 export function FileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionLines, gitRefreshKey, initialDisplayMode }: Props) {
-  if (isImagePath(filePath)) {
-    return <ImageViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} />;
-  }
-  if (isAudioPath(filePath)) {
-    return <AudioViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} />;
-  }
-  if (isDocumentPreviewPath(filePath)) {
-    return <DocumentViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} />;
-  }
-  return <TextFileViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} onOpenFile={onOpenFile} onMentionLines={onMentionLines} gitRefreshKey={gitRefreshKey} initialDisplayMode={initialDisplayMode} />;
+  return (
+    <div key={filePath} className="panel-content-in" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {isImagePath(filePath) ? (
+        <ImageViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} />
+      ) : isAudioPath(filePath) ? (
+        <AudioViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} />
+      ) : isDocumentPreviewPath(filePath) ? (
+        <DocumentViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} />
+      ) : (
+        <TextFileViewer filePath={filePath} cwd={cwd} sourceSessionId={sourceSessionId} onOpenFile={onOpenFile} onMentionLines={onMentionLines} gitRefreshKey={gitRefreshKey} initialDisplayMode={initialDisplayMode} />
+      )}
+    </div>
+  );
 }
 
 function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionLines, gitRefreshKey, initialDisplayMode }: Props) {
@@ -1127,7 +1130,12 @@ function TextFileViewer({ filePath, cwd, sourceSessionId, onOpenFile, onMentionL
       </div>
 
       {/* Content area */}
-      <div ref={contentRef} className="file-viewer-content" style={{ flex: 1, overflow: "auto", background: "var(--bg)" }}>
+      <div
+        key={`${filePath}-${effectiveDisplayMode}`}
+        ref={contentRef}
+        className="file-viewer-content panel-content-in"
+        style={{ flex: 1, overflow: "auto", background: "var(--bg)" }}
+      >
         {effectiveDisplayMode === "diff" && hasGitDiff ? (
           <DiffView patch={gitDiff.patch!} />
         ) : isHtml && effectiveDisplayMode === "preview" ? (

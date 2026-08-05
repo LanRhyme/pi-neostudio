@@ -83,7 +83,7 @@ function Toggle({
           borderRadius: "50%",
           background: "var(--bg)",
           boxShadow: "0 1px 4px rgba(0,0,0,0.22)",
-          transition: "left 0.18s cubic-bezier(.4,0,.2,1)",
+          transition: "left 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       />
     </button>
@@ -899,6 +899,7 @@ export function SkillsConfig({
 
   return (
     <div
+      className="dialog-backdrop"
       style={{
         position: "fixed",
         inset: 0,
@@ -913,6 +914,7 @@ export function SkillsConfig({
       }}
     >
       <div
+        className="dialog-pop"
         style={{
           width: isMobile ? "calc(100vw - 16px)" : 860,
           maxWidth: "calc(100vw - 16px)",

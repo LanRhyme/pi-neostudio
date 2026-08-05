@@ -225,6 +225,12 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
   const sessionBusy = agentRunning || bashRunning;
 
   useEffect(() => {
+    if (!loading) {
+      window.dispatchEvent(new Event("pi-chat-ready"));
+    }
+  }, [loading]);
+
+  useEffect(() => {
     if (!extensionDialog || soundedExtensionDialogIdRef.current === extensionDialog.id) return;
     soundedExtensionDialogIdRef.current = extensionDialog.id;
     playDoneSoundRef.current();
@@ -440,7 +446,7 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
 
   return (
     <div
-      className="relative flex h-full min-w-0 flex-col overflow-hidden"
+      className="relative flex h-full min-w-0 flex-col overflow-hidden panel-content-in"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -510,7 +516,7 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
             >
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0, flex: 1, lineHeight: 1.4, overflow: "hidden" }}>
                 <span className="pi-logo" style={{ fontSize: 28, fontWeight: 700, letterSpacing: 0, color: "var(--text)", flexShrink: 0, whiteSpace: "nowrap" }}>π</span>
-                <span style={{ fontSize: 22, color: "var(--text)", fontWeight: 700, letterSpacing: 0, flexShrink: 0, whiteSpace: "nowrap" }}>Pi Web</span>
+                <span style={{ fontSize: 22, color: "var(--text)", fontWeight: 700, letterSpacing: 0, flexShrink: 0, whiteSpace: "nowrap" }}>Pi NeoStudio</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
                 <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
@@ -548,7 +554,7 @@ export const ChatWindow = memo(function ChatWindow({ session, newSessionCwd, onA
           key={session?.id ?? sessionIdRef.current ?? "default"}
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:none] session-switch"
+          className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:none] panel-content-in"
         >
           <div style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}>
             <div style={{ width: "100%", minWidth: 0, maxWidth: 820, margin: "0 auto" }}>

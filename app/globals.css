@@ -860,7 +860,7 @@ span.linenumber {
 
 @keyframes saved-pop {
   0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); }
-  40%  { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.25); }
+  40%  { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.25); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
 }
 
@@ -908,28 +908,37 @@ span.linenumber {
   .sidebar-container {
     position: relative;
     overflow: hidden;
-    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+    border-right: 1px solid var(--border);
+    will-change: width, min-width, margin, border-right-color;
+    transition: 
+      width 320ms cubic-bezier(0.05, 0.7, 0.1, 1), 
+      min-width 320ms cubic-bezier(0.05, 0.7, 0.1, 1),
+      margin 320ms cubic-bezier(0.05, 0.7, 0.1, 1),
+      border-right-color 320ms cubic-bezier(0.05, 0.7, 0.1, 1) !important;
   }
   .sidebar-container.sidebar-open {
     width: var(--sidebar-width, 260px);
     min-width: var(--sidebar-width, 260px);
+    border-right-color: var(--border);
   }
   .sidebar-container.sidebar-closed {
     width: 0;
     min-width: 0;
-    border-right: none !important;
+    border-right-color: transparent;
   }
   /* keep inner content at fixed width so it doesn't reflow during animation */
   .sidebar-container > * {
     width: var(--sidebar-width, 260px);
     min-width: var(--sidebar-width, 260px);
     opacity: 0;
-    transform: translateX(-12px);
-    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0);
+    will-change: opacity;
+    transition: opacity 260ms cubic-bezier(0.05, 0.7, 0.1, 1);
   }
   .sidebar-container.sidebar-open > * {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateZ(0);
   }
   .sidebar-container.sidebar-resizing,
   .sidebar-container.sidebar-resizing > * {
@@ -941,27 +950,36 @@ span.linenumber {
 @media (min-width: 960px) {
   .right-panel-container {
     overflow: hidden;
-    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+    border-left: 1px solid var(--border);
+    will-change: width, min-width, margin, border-left-color;
+    transition: 
+      width 320ms cubic-bezier(0.05, 0.7, 0.1, 1), 
+      min-width 320ms cubic-bezier(0.05, 0.7, 0.1, 1),
+      margin 320ms cubic-bezier(0.05, 0.7, 0.1, 1),
+      border-left-color 320ms cubic-bezier(0.05, 0.7, 0.1, 1) !important;
     flex-shrink: 0;
   }
   .right-panel-container.right-panel-open {
     width: var(--right-panel-width, clamp(360px, 42vw, 640px));
     min-width: 300px;
+    border-left-color: var(--border);
   }
   .right-panel-container.right-panel-closed {
     width: 0;
     min-width: 0;
-    border-left: none !important;
+    border-left-color: transparent;
   }
   /* keep inner content at fixed width so it doesn't reflow during animation */
   .right-panel-container > * {
     opacity: 0;
-    transform: translateX(12px);
-    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0);
+    will-change: opacity;
+    transition: opacity 260ms cubic-bezier(0.05, 0.7, 0.1, 1);
   }
   .right-panel-container.right-panel-open > * {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateZ(0);
   }
   .right-panel-container > * {
     width: var(--right-panel-width, clamp(360px, 42vw, 640px));
@@ -986,7 +1004,7 @@ span.linenumber {
     background: rgba(0, 0, 0, 0.24);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .right-panel-overlay-backdrop.is-open {
     opacity: 1;
@@ -1002,7 +1020,8 @@ span.linenumber {
     min-width: 300px;
     overflow: hidden;
     box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
-    transition: transform 0.2s ease;
+    will-change: transform;
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .right-panel-container.right-panel-open {
     transform: translateX(0);
@@ -1030,7 +1049,8 @@ span.linenumber {
     width: 280px;
     max-width: 85vw;
     height: var(--app-viewport-height, 100dvh);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    will-change: transform;
+    transition: transform 320ms cubic-bezier(0.05, 0.7, 0.1, 1), box-shadow 320ms cubic-bezier(0.05, 0.7, 0.1, 1);
   }
   .sidebar-container.sidebar-open {
     transform: translateX(0);
@@ -1047,7 +1067,8 @@ span.linenumber {
     height: var(--app-viewport-height, 100dvh);
     z-index: 250;
     overflow: hidden;
-    transition: transform 0.2s ease;
+    will-change: transform;
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .right-panel-container.right-panel-open {
     width: auto;
@@ -1086,42 +1107,94 @@ span.linenumber {
   }
 }
 
-/* ─── lpigui 动画增强 ─────────────────────────────── */
+/* ─── lpigui 动画增强（丝滑非线性缓动，全去除无谓弹动） ─────────── */
 
-/* 消息卡片进入动画（弹性） */
-@keyframes msg-in {
-  0%   { opacity: 0; transform: translateY(10px) scale(0.98); }
-  60%  { opacity: 1; transform: translateY(-1px); }
+/* 面板与内容浮现动画（GPU 合成器友好，极速 60fps 无卡顿） */
+@keyframes panel-content-in {
+  0%   { opacity: 0; transform: translateY(6px) translateZ(0); }
+  100% { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+.panel-content-in {
+  will-change: opacity, transform;
+  animation: panel-content-in 280ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+@keyframes panel-slide-in {
+  0%   { opacity: 0; transform: translateX(6px) translateZ(0); }
+  100% { opacity: 1; transform: translateX(0) translateZ(0); }
+}
+.panel-slide-in {
+  will-change: opacity, transform;
+  animation: panel-slide-in 260ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+@keyframes stagger-fade-in {
+  0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-.msg-enter {
-  animation: msg-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+.stagger-fade-in {
+  animation: stagger-fade-in 240ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
 }
 
-/* 用户气泡 spring 弹出 */
+/* 页面整体载入交错动画 (Page Entrance Stagger) */
+@keyframes page-slide-top {
+  0%   { opacity: 0; transform: translateY(-12px) translateZ(0); }
+  100% { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+@keyframes page-slide-left {
+  0%   { opacity: 0; transform: translateX(-16px) translateZ(0); }
+  100% { opacity: 1; transform: translateX(0) translateZ(0); }
+}
+@keyframes page-slide-up {
+  0%   { opacity: 0; transform: translateY(16px) translateZ(0); }
+  100% { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
+.page-enter-top {
+  will-change: opacity, transform;
+  animation: page-slide-top 450ms cubic-bezier(0.05, 0.7, 0.1, 1) 100ms both;
+}
+.page-enter-left {
+  will-change: opacity, transform;
+  animation: page-slide-left 480ms cubic-bezier(0.05, 0.7, 0.1, 1) 180ms both;
+}
+.page-enter-up {
+  will-change: opacity, transform;
+  animation: page-slide-up 520ms cubic-bezier(0.05, 0.7, 0.1, 1) 240ms both;
+}
+
+/* 消息卡片进入动画 */
+@keyframes msg-in {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.msg-enter {
+  animation: msg-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 用户气泡平滑浮现 */
 @keyframes msg-pop {
-  0%   { opacity: 0; transform: scale(0.88) translateY(8px); }
-  55%  { opacity: 1; transform: scale(1.03) translateY(-1px); }
+  0%   { opacity: 0; transform: scale(0.96) translateY(6px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 .msg-pop {
-  animation: msg-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: msg-pop 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* 工具卡片滑入 */
 @keyframes tool-card-in {
-  from { opacity: 0; transform: translateX(14px); }
+  from { opacity: 0; transform: translateX(12px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 .tool-card-in {
-  animation: tool-card-in 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: tool-card-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* thinking 展开平滑过渡 */
 .thinking-expand {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 260ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: grid-template-rows 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .thinking-expand.open {
   grid-template-rows: 1fr;
@@ -1137,25 +1210,25 @@ span.linenumber {
   to   { opacity: 1; transform: translateX(0); }
 }
 .list-item-in {
-  animation: list-item-in 300ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: list-item-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* 按钮按下微缩放（通用触感） */
+/* 按钮按下微缩放（触感反馈） */
 button {
   -webkit-tap-highlight-color: transparent;
 }
 button:active {
-  transform: scale(0.96);
-  transition: transform 90ms ease !important;
+  transform: scale(0.98);
+  transition: transform 100ms cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* 会话切换过渡增强 */
+/* 会话切换过渡 */
 @keyframes session-switch-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.995); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .session-switch {
-  animation: session-switch-in 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: session-switch-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* 流式内容光标 */
@@ -1176,19 +1249,18 @@ button:active {
 
 /* 对话框弹出 */
 @keyframes dialog-pop {
-  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  from { opacity: 0; transform: scale(0.98) translateY(3px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 .dialog-pop {
-  /* 开头快进曲线：立即可见，无延迟感 */
-  animation: dialog-pop 130ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: dialog-pop 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes dialog-pop-out {
   from { opacity: 1; transform: scale(1) translateY(0); }
-  to   { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to   { opacity: 0; transform: scale(0.98) translateY(3px); }
 }
 .dialog-pop-out {
-  animation: dialog-pop-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: dialog-pop-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 @keyframes dialog-backdrop-in {
   from { opacity: 0; }
@@ -1199,20 +1271,20 @@ button:active {
   to   { opacity: 0; }
 }
 .dialog-backdrop {
-  animation: dialog-backdrop-in 110ms ease-out both;
+  animation: dialog-backdrop-in 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .dialog-backdrop.closing {
-  animation: dialog-backdrop-out 180ms ease both;
+  animation: dialog-backdrop-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 /* 预设 pill */
 @keyframes pill-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .preset-pill {
-  animation: pill-in 320ms ease-out both;
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  animation: pill-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 .preset-pill:hover {
@@ -1220,18 +1292,10 @@ button:active {
   transform: translateY(-1px);
 }
 
-/* 会话侧栏折叠过渡 */
-.sidebar-container, .right-panel-container {
-  transition: margin 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* 通用主题变量过渡（仅在无 reduced-motion 时生效） */
+/* 通用主题变量过渡（应用于 body） */
 @media (prefers-reduced-motion: no-preference) {
-  body,
-  body * {
-    transition-property: background-color, border-color, color;
-    transition-duration: 120ms;
-    transition-timing-function: ease;
+  body {
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
   }
 }
 @media (prefers-reduced-motion: reduce) {

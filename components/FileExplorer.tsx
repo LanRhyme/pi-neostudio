@@ -689,7 +689,12 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(function FileE
     fetchEntries(cwd)
       .then((entries) => { if (!cancelled) setRoots(entries); })
       .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { 
+        if (!cancelled) {
+          setLoading(false);
+          window.dispatchEvent(new Event("pi-file-ready"));
+        } 
+      });
     return () => { cancelled = true; };
   }, [cwd, refreshKey, treeRefreshKey]);
 
@@ -876,23 +881,25 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(function FileE
           ) : error ? (
             <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--danger)" }}>{error}</div>
           ) : (
-            roots.map((node) => (
-              <TreeNode
-                key={node.fullPath}
-                node={node}
-                depth={0}
-                cwd={cwd}
-                onOpenFile={onOpenFile}
-                onAtMention={onAtMention}
-                expandedPaths={expandedPaths}
-                onToggleExpanded={handleToggleExpanded}
-                refreshToken={refreshToken}
-                highlightedPaths={highlightedPaths}
-                gitStatusByPath={gitStatusByPath}
-                changedDirectoryPaths={changedDirectoryPaths}
-                t={t}
-              />
-            ))
+            <div className="panel-content-in">
+              {roots.map((node) => (
+                <TreeNode
+                  key={node.fullPath}
+                  node={node}
+                  depth={0}
+                  cwd={cwd}
+                  onOpenFile={onOpenFile}
+                  onAtMention={onAtMention}
+                  expandedPaths={expandedPaths}
+                  onToggleExpanded={handleToggleExpanded}
+                  refreshToken={refreshToken}
+                  highlightedPaths={highlightedPaths}
+                  gitStatusByPath={gitStatusByPath}
+                  changedDirectoryPaths={changedDirectoryPaths}
+                  t={t}
+                />
+              ))}
+            </div>
           )}
           {!loading && !error && roots.length === 0 && (
             <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-dim)" }}>

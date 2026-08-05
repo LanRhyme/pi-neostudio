@@ -18,6 +18,7 @@ import { PluginsConfig } from "./PluginsConfig";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator } from "./BranchNavigator";
 import { ACCENTS, useTheme } from "@/hooks/useTheme";
+import { Preloader } from "./Preloader";
 import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -258,6 +259,10 @@ export function AppShell() {
   // read tool resolves it the same way (it strips the @ prefix).
   const handleAtMention = useCallback((relativePath: string, isDir: boolean) => {
     chatInputRef.current?.insertText(buildAtMentionText(relativePath, isDir));
+  }, []);
+
+  const handleInsertText = useCallback((text: string) => {
+    chatInputRef.current?.insertText(text);
   }, []);
 
   const handleAtMentions = useCallback((relativePaths: string[]) => {
@@ -559,6 +564,12 @@ export function AppShell() {
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
   const showChat = selectedSession !== null || effectiveNewSessionCwd !== null;
+
+  useEffect(() => {
+    if (!showChat) {
+      window.dispatchEvent(new Event("pi-chat-ready"));
+    }
+  }, [showChat]);
   const projectTrustCwd = selectedSession?.cwd ?? effectiveNewSessionCwd;
   // While restoring initial session from URL, don't show the placeholder
   const showPlaceholder = initialSessionRestored && !showChat;
@@ -610,7 +621,7 @@ export function AppShell() {
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
   const activeCwdName = activeCwd ? getFileName(activeCwd) || activeCwd : null;
-  const windowTitle = activeCwdName ? `${activeCwdName} - Pi Web` : "Pi Web";
+  const windowTitle = activeCwdName ? `${activeCwdName} - Pi NeoStudio` : "Pi NeoStudio";
 
   useEffect(() => {
     const syncWindowTitle = () => {
@@ -641,6 +652,7 @@ export function AppShell() {
         onExplorerRefresh={handleExplorerRefresh}
         onAtMention={handleAtMention}
         onAtMentions={handleAtMentions}
+        onInsertText={handleInsertText}
       />
       <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
         {([
@@ -725,16 +737,8 @@ export function AppShell() {
       @keyframes session-info-pop {
         0% {
           opacity: 0;
-          transform: translateY(-24px);
-          filter: blur(6px);
-          box-shadow: 0 2px 8px rgba(0,0,0,0);
-        }
-        55% {
-          opacity: 1;
-          transform: translateY(0);
-          filter: blur(0);
-          background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
-          box-shadow: 0 18px 44px rgba(37,99,235,0.16);
+          transform: translateY(-10px);
+          filter: blur(4px);
         }
         100% {
           opacity: 1;
@@ -761,7 +765,7 @@ export function AppShell() {
         position: relative;
         overflow: hidden;
         transform-origin: top right;
-        animation: session-info-pop 360ms ease-out both;
+        animation: session-info-pop 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
         will-change: transform, opacity, filter, background, box-shadow;
       }
       .session-info-popover::after {
@@ -804,11 +808,15 @@ export function AppShell() {
         background: "var(--bg)",
       }}
     >
+      {/* Preloader overlay matching Web-Personal organic cyber style */}
+      <Preloader />
+
       {/* Mobile overlay backdrop */}
       <SidebarOverlay mobilePending={mobileSidebarReady} />
 
       {/* Left sidebar */}
       <SidebarPanel
+        className="page-enter-left"
         mobilePending={mobileSidebarReady}
         resizing={sidebarResizer.isResizing}
         panelRef={sidebarResizer.panelRef}
@@ -820,9 +828,9 @@ export function AppShell() {
       </SidebarPanel>
 
       {/* Center: chat */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+      <div className="page-enter-up" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         {/* Top bar with sidebar toggle */}
-        <div ref={topBarRef} style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
+        <div ref={topBarRef} className="page-enter-top" style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)" }}>
           <SidebarToggleButton size={TOP_BAR_ICON_BUTTON_SIZE} />
           <button
             onClick={(e) => {
@@ -1288,7 +1296,7 @@ export function AppShell() {
           })()}
           {/* Top panel dropdown — shared, only one active at a time */}
           {activeTopPanel && topPanelPos && (
-            <div style={{
+            <div className="panel-content-in" style={{
               position: "fixed",
               top: topPanelPos.top,
               left: topPanelPos.left,
@@ -1296,16 +1304,19 @@ export function AppShell() {
               maxHeight: `calc(100dvh - ${topPanelPos.top}px)`,
               overflowY: "auto",
               zIndex: 500,
+              background: "var(--bg-panel)",
+              borderLeft: "1px solid var(--border)",
+              borderRight: "1px solid var(--border)",
+              borderBottom: "1px solid var(--border)",
+              borderBottomLeftRadius: 6,
+              borderBottomRightRadius: 6,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
             }}>
               {activeTopPanel === "language" && (
                 <div
                   role="menu"
                   aria-label={translate("common.language")}
                   style={{
-                    background: "var(--bg-panel)",
-                    borderLeft: "1px solid var(--border)",
-                    borderRight: "1px solid var(--border)",
-                    borderBottom: "1px solid var(--border)",
                     overflow: "hidden",
                     padding: 4,
                   }}
@@ -1341,10 +1352,7 @@ export function AppShell() {
                 </div>
               )}
               {activeTopPanel === "system" && (
-                <div style={{
-                  background: "var(--bg-panel)",
-                  borderBottom: "1px solid var(--border)",
-                }}>
+                <div>
                   {systemPrompt ? (
                     <div style={{
                       maxHeight: "min(600px, 75vh)",
@@ -1370,12 +1378,7 @@ export function AppShell() {
                 </div>
               )}
               {activeTopPanel === "session" && (
-                <div className="session-info-popover" style={{
-                  background: "var(--bg-panel)",
-                  borderBottom: "1px solid var(--border)",
-                  boxShadow: "0 10px 28px rgba(0,0,0,0.10)",
-                  padding: "12px 16px",
-                }}>
+                <div className="session-info-popover" style={{ padding: "12px 16px" }}>
                   {sessionStats ? (() => {
                     const sessionRows = [
                        ...(sessionStats.sessionName ? [{ label: translate("session.name"), value: sessionStats.sessionName, copyField: null }] : []),
@@ -1570,11 +1573,11 @@ export function AppShell() {
             </div>
           ) : showPlaceholder ? (
             activeCwd ? (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 15 }}>
+              <div className="panel-content-in" style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 15 }}>
                  {translate("workspace.selectSession")}
               </div>
             ) : (
-              <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "flex-start", gap: 8, userSelect: "none", pointerEvents: "none" }}>
+              <div className="panel-content-in" style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "flex-start", gap: 8, userSelect: "none", pointerEvents: "none" }}>
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0 }}>
                   <line x1="20" y1="12" x2="4" y2="12" /><polyline points="10 6 4 12 10 18" />
                 </svg>

@@ -1288,6 +1288,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           {historyMenuOpen && inputHistory.length > 0 && (
             <div
               ref={historyMenuRef}
+              className="panel-content-in"
               style={{
                 position: "absolute",
                 left: 0,
@@ -1374,6 +1375,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           )}
           {slashMenuOpen && slashQuery !== null && (
             <div
+              className="panel-content-in"
               style={{
                 position: "absolute",
                 left: 0,
@@ -1526,6 +1528,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               : "";
             return (
               <div
+                className="panel-content-in"
                 style={{
                   position: "absolute",
                   left: 0,
@@ -1871,7 +1874,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       ? { left: 8, right: 8, maxWidth: "calc(100vw - 16px)" }
                       : { left: modelDropdownRect.left, width: "max-content", minWidth: modelDropdownRect.width };
                     return (
-                      <div ref={modelDropdownPanelRef} style={{
+                      <div ref={modelDropdownPanelRef} className="panel-content-in" style={{
                       position: "fixed",
                       bottom,
                       ...panelPos,
@@ -2085,7 +2088,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   {(!isMobile || controlsMenuOpen) && <span style={{ whiteSpace: "nowrap" }}>{thinkingDisplayLabel}</span>}
                 </button>
                 {thinkingDropdownOpen && (
-                  <div style={{
+                  <div className="panel-content-in" style={{
                     position: "absolute", bottom: "calc(100% + 6px)", right: 0,
                     zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
                     borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
@@ -2170,7 +2173,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   {(!isMobile || controlsMenuOpen) && <span style={{ whiteSpace: "nowrap" }}>{toolPresetLabel}</span>}
                 </button>
                 {toolDropdownOpen && (
-                  <div style={{
+                  <div className="panel-content-in" style={{
                     position: "absolute", bottom: "calc(100% + 6px)", right: 0,
                     zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
                     borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",

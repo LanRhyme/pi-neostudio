@@ -1,6 +1,6 @@
 import type { LocalePlugin } from "../types";
 
-/** Pi Web 内置英语语言包。 */
+/** Pi NeoStudio 内置英语语言包。 */
 export const enLocale: LocalePlugin = {
   id: "en",
   label: "English",
@@ -447,5 +447,21 @@ export const enLocale: LocalePlugin = {
     "settings.reset": "Reset defaults",
     "i18n.before": "Before",
     "i18n.after": "After",
+    "git.sourceControl": "Source Control",
+    "git.commit": "Commit",
+    "git.commitPlaceholder": "Message (Ctrl+Enter to commit)",
+    "git.generateAI": "Generate Commit Message",
+    "git.generating": "Generating...",
+    "git.stagedChanges": "STAGED CHANGES",
+    "git.changes": "CHANGES",
+    "git.stageAll": "Stage All",
+    "git.unstageAll": "Unstage All",
+    "git.stage": "Stage",
+    "git.unstage": "Unstage",
+    "git.discard": "Discard Changes",
+    "git.history": "Commits",
+    "git.noChanges": "No changes",
+    "git.insertCommit": "Insert into chat",
+    "git.copyHash": "Copy Hash",
   },
 };

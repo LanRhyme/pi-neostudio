@@ -306,13 +306,18 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
            {!compact && <span>{t("i18n.branches")}</span>}
         </button>
         {open && dropdownPos && (
-          <div style={{
+          <div className="panel-content-in" style={{
             position: "fixed",
             top: dropdownPos.top,
             left: dropdownPos.left,
             width: dropdownPos.width,
             background: "var(--bg-panel)",
+            borderLeft: "1px solid var(--border)",
+            borderRight: "1px solid var(--border)",
             borderBottom: "1px solid var(--border)",
+            borderBottomLeftRadius: 6,
+            borderBottomRightRadius: 6,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
             zIndex: 500,
           }}>
             {hasContent && firstNode ? (
@@ -366,7 +371,7 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
 
       {/* Tree panel - overlay */}
       {open && (
-        <div style={{
+        <div className="panel-content-in" style={{
           position: "absolute",
           top: "100%",
           left: 0,
