@@ -44,20 +44,20 @@
 }
 
 html.dark {
-  /* shadcn zinc 中性黑灰系 */
-  --bg: #09090b;
-  --bg-panel: #111113;
-  --bg-hover: #18181b;
-  --bg-selected: #232327;
-  --border: #26262b;
+  /* 纯中性灰阶（R=G=B，无任何色彩偏向） */
+  --bg: #0a0a0a;
+  --bg-panel: #121212;
+  --bg-hover: #1a1a1a;
+  --bg-selected: #232323;
+  --border: #262626;
   --text: #fafafa;
-  --text-muted: #a1a1aa;
-  --text-dim: #71717a;
+  --text-muted: #a1a1a1;
+  --text-dim: #717171;
   --accent: #60a5fa;
   --accent-hover: #93c5fd;
-  --user-bg: color-mix(in srgb, var(--accent) 10%, #09090b);
-  --assistant-bg: #0c0c0e;
-  --tool-bg: #131316;
+  --user-bg: color-mix(in srgb, var(--accent) 10%, #0a0a0a);
+  --assistant-bg: #0d0d0d;
+  --tool-bg: #141414;
   --bg-subtle: rgba(255,255,255,0.04);
   --danger: #c98f88;
   --danger-hover: #d8a29b;
