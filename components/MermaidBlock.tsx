@@ -267,8 +267,19 @@ export function CodeBlock({ code, lang, headerAction }: CodeBlockProps) {
           fontSize: 12.5,
           lineHeight: 1.62,
           borderRadius: 0,
-          background: "color-mix(in srgb, var(--bg) 92%, var(--bg-panel))",
         }}
+        PreTag={({ style, ...props }) => (
+          // 统一用 backgroundColor，清掉主题的 background shorthand，
+          // 避免 React 对 shorthand/longhand 冲突的警告
+          <pre
+            {...props}
+            style={{
+              ...style,
+              background: undefined,
+              backgroundColor: "color-mix(in srgb, var(--bg) 92%, var(--bg-panel))",
+            }}
+          />
+        )}
         codeTagProps={{ style: { fontFamily: "var(--font-mono)" } }}
       >
         {code}
