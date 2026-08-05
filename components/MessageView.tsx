@@ -475,6 +475,7 @@ function AssistantMessageView({
 
   return (
     <div
+      className="msg-enter"
       style={{ marginBottom: 16 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

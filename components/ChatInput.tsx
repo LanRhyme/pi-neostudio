@@ -1614,6 +1614,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             );
           })()}
           <div
+            className="chat-input-shell"
             style={{
               minWidth: 0,
               display: "flex",

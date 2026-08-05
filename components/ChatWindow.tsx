@@ -196,6 +196,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     chatInputRef?.current?.insertIfEmpty(content);
   }, [chatInputRef]);
 
+  const handlePresetPick = useCallback((text: string) => {
+    chatInputRef?.current?.insertIfEmpty(text);
+  }, [chatInputRef]);
+
   const {
     loading, error, messages, entryIds, streamState,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -485,6 +489,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 </span>
               </div>
             </div>
+            <PresetPills onPick={handlePresetPick} />
             <NoticeShelf notices={notices} align="right" />
             {chatInputElement}
           </div>
@@ -855,6 +860,53 @@ function NoticeShelf({ notices, floating = false, align = "left" }: { notices: N
 
 type ExtensionDialogRequest = Extract<ExtensionUiRequest, { method: "select" | "confirm" | "input" | "editor" }>;
 
+const PRESET_PROMPTS = [
+  { label: "探索代码库", text: "探索代码库，给我一份项目结构和关键模块的概览" },
+  { label: "帮我梳理进度", text: "帮我梳理一下当前项目的进度，列出已完成和未完成的事项" },
+  { label: "权衡我的选择", text: "帮我在几个方案之间权衡利弊，给出推荐" },
+  { label: "开始功能规划", text: "开始功能规划：帮我把这个想法拆解成可执行的步骤" },
+  { label: "制定一个目标", text: "制定一个目标：帮我明确目标并拆解里程碑" },
+  { label: "调试一个问题", text: "调试一个问题：请帮我定位并修复这个问题" },
+  { label: "审查我的改动", text: "审查我的改动：帮我 review 一下当前的代码变更" },
+];
+
+function PresetPills({ onPick }: { onPick: (text: string) => void }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        gap: 8,
+        margin: "4px 16px 16px",
+        maxWidth: 560,
+        marginLeft: "auto",
+        marginRight: "auto",
+      }}
+    >
+      {PRESET_PROMPTS.map((p, i) => (
+        <button
+          key={p.label}
+          onClick={() => onPick(p.text)}
+          className="preset-pill"
+          style={{
+            animationDelay: `${i * 35}ms`,
+            padding: "7px 14px",
+            borderRadius: 999,
+            border: "1px solid var(--border)",
+            background: "var(--bg-panel)",
+            color: "var(--text-muted)",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ExtensionDialog({
   request,
   onRespond,
@@ -893,6 +945,7 @@ function ExtensionDialog({
       <div
         role="dialog"
         aria-modal="true"
+        className="dialog-pop"
         style={{
           width: "min(560px, 100%)",
           border: "1px solid var(--border)",
