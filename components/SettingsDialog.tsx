@@ -30,8 +30,12 @@ function ToggleRow({
 			}}
 		>
 			<div style={{ minWidth: 0 }}>
-				<div style={{ color: "var(--text)", fontSize: 13, fontWeight: 500 }}>{label}</div>
-				<div style={{ color: "var(--text-dim)", fontSize: 11.5, marginTop: 2 }}>{desc}</div>
+				<div style={{ color: "var(--text)", fontSize: 13, fontWeight: 500 }}>
+					{label}
+				</div>
+				<div style={{ color: "var(--text-dim)", fontSize: 11.5, marginTop: 2 }}>
+					{desc}
+				</div>
 			</div>
 			<button
 				type="button"
@@ -85,7 +89,9 @@ function IntensityOption({
 				padding: "7px 0",
 				borderRadius: 7,
 				border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-				background: active ? "color-mix(in srgb, var(--accent) 10%, var(--bg))" : "var(--bg-panel)",
+				background: active
+					? "color-mix(in srgb, var(--accent) 10%, var(--bg))"
+					: "var(--bg-panel)",
 				color: active ? "var(--accent)" : "var(--text-muted)",
 				fontSize: 12,
 				cursor: "pointer",
@@ -109,10 +115,11 @@ export function SettingsDialog({ onClose }: Props) {
 			return;
 		}
 		setClosing(true);
-		setTimeout(onClose, settings.animationIntensity === "smooth" ? 260 : 200);
+		setTimeout(onClose, settings.animationIntensity === "smooth" ? 220 : 170);
 	}, [onClose, settings.animationIntensity]);
 
-	const popDuration = settings.animationIntensity === "smooth" ? "240ms" : "180ms";
+	const popDuration =
+		settings.animationIntensity === "smooth" ? "190ms" : "130ms";
 
 	return (
 		<div
@@ -178,7 +185,15 @@ export function SettingsDialog({ onClose }: Props) {
 				</div>
 
 				<div style={{ padding: "4px 16px 14px", overflowY: "auto" }}>
-					<div style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", paddingTop: 10 }}>
+					<div
+						style={{
+							color: "var(--text-muted)",
+							fontSize: 11,
+							fontWeight: 600,
+							letterSpacing: "0.06em",
+							paddingTop: 10,
+						}}
+					>
 						{t("settings.streaming")}
 					</div>
 					<ToggleRow
@@ -200,16 +215,43 @@ export function SettingsDialog({ onClose }: Props) {
 						onChange={(v) => update({ thinkingAutoExpand: v })}
 					/>
 
-					<div style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", paddingTop: 14, paddingBottom: 6 }}>
+					<div
+						style={{
+							color: "var(--text-muted)",
+							fontSize: 11,
+							fontWeight: 600,
+							letterSpacing: "0.06em",
+							paddingTop: 14,
+							paddingBottom: 6,
+						}}
+					>
 						{t("settings.animationIntensity")}
 					</div>
 					<div style={{ display: "flex", gap: 8 }}>
-						<IntensityOption label={t("settings.intensitySmooth")} active={settings.animationIntensity === "smooth"} onClick={() => update({ animationIntensity: "smooth" })} />
-						<IntensityOption label={t("settings.intensityStandard")} active={settings.animationIntensity === "standard"} onClick={() => update({ animationIntensity: "standard" })} />
-						<IntensityOption label={t("settings.intensityNone")} active={settings.animationIntensity === "none"} onClick={() => update({ animationIntensity: "none" })} />
+						<IntensityOption
+							label={t("settings.intensitySmooth")}
+							active={settings.animationIntensity === "smooth"}
+							onClick={() => update({ animationIntensity: "smooth" })}
+						/>
+						<IntensityOption
+							label={t("settings.intensityStandard")}
+							active={settings.animationIntensity === "standard"}
+							onClick={() => update({ animationIntensity: "standard" })}
+						/>
+						<IntensityOption
+							label={t("settings.intensityNone")}
+							active={settings.animationIntensity === "none"}
+							onClick={() => update({ animationIntensity: "none" })}
+						/>
 					</div>
 
-					<div style={{ paddingTop: 14, display: "flex", justifyContent: "flex-end" }}>
+					<div
+						style={{
+							paddingTop: 14,
+							display: "flex",
+							justifyContent: "flex-end",
+						}}
+					>
 						<button
 							type="button"
 							onClick={reset}
