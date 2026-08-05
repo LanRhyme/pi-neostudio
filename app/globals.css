@@ -29,7 +29,7 @@
   --text-dim: #9ca3af;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
-  --user-bg: #eff6ff;
+  --user-bg: color-mix(in srgb, var(--accent) 7%, #ffffff);
   --assistant-bg: #ffffff;
   --tool-bg: #f9fafb;
   --bg-subtle: rgba(0,0,0,0.03);
@@ -46,7 +46,7 @@ html.dark {
   --text-dim: #6b7280;
   --accent: #60a5fa;
   --accent-hover: #93c5fd;
-  --user-bg: #1e293b;
+  --user-bg: color-mix(in srgb, var(--accent) 12%, #1a1a1a);
   --assistant-bg: #1a1a1a;
   --tool-bg: #1f2937;
   --bg-subtle: rgba(255,255,255,0.04);
@@ -1128,4 +1128,69 @@ span.linenumber {
 .chat-input-shell:focus-within {
   border-color: color-mix(in srgb, var(--accent) 55%, transparent) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), 0 8px 24px -12px rgba(15,23,42,0.12) !important;
+}
+/* ─── 多主题色 (data-accent, 莫兰迪低饱和) ──────────── */
+html[data-accent="sage"] {
+  --accent: #6e7f5a;
+  --accent-hover: #5c6d49;
+}
+html[data-accent="sage"].dark {
+  --accent: #a3b592;
+  --accent-hover: #b9c8ab;
+}
+html[data-accent="mist"] {
+  --accent: #5d7a8c;
+  --accent-hover: #4d6778;
+}
+html[data-accent="mist"].dark {
+  --accent: #8fb0c4;
+  --accent-hover: #a5c2d4;
+}
+html[data-accent="mauve"] {
+  --accent: #7a6a8f;
+  --accent-hover: #67597a;
+}
+html[data-accent="mauve"].dark {
+  --accent: #a99cc2;
+  --accent-hover: #bcb1d2;
+}
+html[data-accent="clay"] {
+  --accent: #a06a55;
+  --accent-hover: #8a5946;
+}
+html[data-accent="clay"].dark {
+  --accent: #c89883;
+  --accent-hover: #d6ab98;
+}
+html[data-accent="rose"] {
+  --accent: #9d6b6b;
+  --accent-hover: #865858;
+}
+html[data-accent="rose"].dark {
+  --accent: #c59c9c;
+  --accent-hover: #d4b0b0;
+}
+html[data-accent="olive"] {
+  --accent: #74775a;
+  --accent-hover: #616448;
+}
+html[data-accent="olive"].dark {
+  --accent: #a7ab85;
+  --accent-hover: #b9bd97;
+}
+html[data-accent="slate"] {
+  --accent: #587a74;
+  --accent-hover: #486661;
+}
+html[data-accent="slate"].dark {
+  --accent: #8fb3aa;
+  --accent-hover: #a4c4bc;
+}
+html[data-accent="custom"] {
+  --accent: var(--accent-custom, #6e7f5a);
+  --accent-hover: color-mix(in srgb, var(--accent-custom, #6e7f5a) 82%, #000000);
+}
+html[data-accent="custom"].dark {
+  --accent: var(--accent-custom, #a3b592);
+  --accent-hover: color-mix(in srgb, var(--accent-custom, #a3b592) 82%, #ffffff);
 }

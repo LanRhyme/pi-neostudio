@@ -68,7 +68,7 @@ export default function RootLayout({
 				<meta name="google" content="notranslate" />
 				<script
 					dangerouslySetInnerHTML={{
-						__html: `(function(){try{var t=localStorage.getItem("pi-theme");if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}})();`,
+						__html: `(function(){try{var t=localStorage.getItem("pi-theme");if(t==="dark")document.documentElement.classList.add("dark");var a=localStorage.getItem("pi-accent");if(a)document.documentElement.dataset.accent=a;var c=localStorage.getItem("pi-accent-custom");if(c)document.documentElement.style.setProperty("--accent-custom",c)}catch(e){}})();`,
 					}}
 				/>
 			</head>

@@ -12,7 +12,7 @@ import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator } from "./BranchNavigator";
-import { useTheme } from "@/hooks/useTheme";
+import { ACCENTS, useTheme, type Accent } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -51,7 +51,9 @@ export function AppShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [initialNavigation] = useState(() => getInitialNavigation(searchParams));
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme, accent, setAccent } = useTheme();
+  const [accentPickerOpen, setAccentPickerOpen] = useState(false);
+  const accentBtnRef = useRef<HTMLButtonElement>(null);
   const { locale, setLocale, t: translate, supportedLocales } = useI18n();
   const isMobile = useIsMobile();
   useViewportHeight();
@@ -886,6 +888,86 @@ export function AppShell() {
               </svg>
             )}
            </button>
+           <div style={{ position: "relative", display: "flex" }}>
+             <button
+               ref={accentBtnRef}
+               type="button"
+               onClick={() => setAccentPickerOpen((v) => !v)}
+               title="主题色"
+               aria-label="主题色"
+               aria-haspopup="menu"
+               aria-expanded={accentPickerOpen}
+               style={{
+                 display: "flex", alignItems: "center", justifyContent: "center",
+                 width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
+                 background: "none", border: "none", borderRight: "1px solid var(--border)",
+                 color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
+               }}
+               onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+               onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+             >
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="M12 22a10 10 0 1 1 10-10" />
+                 <path d="M22 22 12 12" />
+                 <path d="M22 22l-6-2" />
+                 <path d="M22 22l-2-6" />
+               </svg>
+             </button>
+             {accentPickerOpen && (
+               <>
+                 <div
+                   style={{ position: "fixed", inset: 0, zIndex: 4900 }}
+                   onClick={() => setAccentPickerOpen(false)}
+                 />
+                 <div
+                   className="dialog-pop"
+                   role="menu"
+                   style={{
+                     position: "fixed", zIndex: 4950,
+                     top: 52, right: 8,
+                     padding: 10, borderRadius: 10,
+                     border: "1px solid var(--border)",
+                     background: "var(--bg-panel)",
+                     boxShadow: "0 8px 30px -6px rgba(0,0,0,0.18)",
+                   }}
+                 >
+                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                     {ACCENTS.map((a) => (
+                       <button
+                         key={a.id}
+                         type="button"
+                         role="menuitemradio"
+                         aria-checked={accent === a.id}
+                         title={a.name}
+                         onClick={() => { setAccent(a.id); setAccentPickerOpen(false); }}
+                         style={{
+                           width: 22, height: 22, borderRadius: 999,
+                           background: a.id === "custom"
+                             ? "conic-gradient(#e11d48, #ea580c, #eab308, #22c55e, #0d9488, #3b82f6, #7c3aed, #e11d48)"
+                             : a.color,
+                           border: accent === a.id ? "2px solid var(--text)" : "2px solid transparent",
+                           cursor: "pointer", padding: 0,
+                           transition: "transform 0.12s ease",
+                         }}
+                         onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.15)"; }}
+                         onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                       />
+                     ))}
+                   </div>
+                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                     <span style={{ fontSize: 11, color: "var(--text-muted)" }}>自定义色</span>
+                     <input
+                       type="color"
+                       value={accent === "custom" ? (getComputedStyle(document.documentElement).getPropertyValue("--accent-custom").trim() || "#6e7f5a") : "#6e7f5a"}
+                       onChange={(e) => { setAccent("custom", e.target.value); }}
+                       style={{ width: 26, height: 26, padding: 0, border: "none", background: "none", cursor: "pointer" }}
+                       title="选择自定义主题色"
+                     />
+                   </div>
+                 </div>
+               </>
+             )}
+           </div>
            <button
              ref={languageBtnRef}
              type="button"

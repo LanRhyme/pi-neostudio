@@ -34,7 +34,10 @@
     "start": "next start -H 127.0.0.1 -p 30141",
     "start:lan": "next start -H 0.0.0.0 -p 30141",
     "lint": "eslint .",
-    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public"
+    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
+    "desktop": "next build && electron .",
+    "desktop:dev": "electron . --dev",
+    "desktop:start": "electron ."
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.83.0",
@@ -55,6 +58,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "electron": "^43.3.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "jiti": "^2.7.0",
@@ -75,5 +79,6 @@
   "allowScripts": {
     "sharp@0.34.5": true,
     "unrs-resolver@1.11.1": true
-  }
+  },
+  "main": "electron/main.cjs"
 }

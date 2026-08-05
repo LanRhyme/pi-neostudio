@@ -86,6 +86,25 @@ export function MarkdownBody({ children, className, isStreaming, cwd, onOpenFile
         </div>
       );
     },
+    p({ children }) {
+      // 流式输出时逐字渐显上滑（纯文本段落才启用，长文本退化为普通渲染）
+      if (isStreaming && typeof children === "string" && children.length <= 2000) {
+        return (
+          <p className="char-stream">
+            {Array.from(children).map((ch, i) => (
+              <span
+                key={i}
+                className="char-in"
+                style={{ animationDelay: `${Math.min(i * 8, 600)}ms` }}
+              >
+                {ch === " " ? "\u00A0" : ch}
+              </span>
+            ))}
+          </p>
+        );
+      }
+      return <p>{children}</p>;
+    },
   }), [cwd, isStreaming, onOpenFile]);
 
   return (

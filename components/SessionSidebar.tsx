@@ -1906,7 +1906,8 @@ function SessionItem({
         borderLeft: confirmDelete
           ? "2px solid #ef4444"
           : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
-        transition: "background 0.1s",
+        transform: hovered ? "translateX(2px)" : "translateX(0)",
+        transition: "background 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
         opacity: deleting ? 0.5 : 1,
         gap: 6,
         overflow: "hidden",
