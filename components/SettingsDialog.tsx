@@ -10,6 +10,8 @@ interface Props {
 	onClose: () => void;
 }
 
+type SettingsTab = "general" | "usage";
+
 function ToggleRow({
 	label,
 	desc,
@@ -105,9 +107,61 @@ function IntensityOption({
 	);
 }
 
+function TabButton({
+	label,
+	active,
+	onClick,
+}: {
+	label: string;
+	active: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			role="tab"
+			aria-selected={active}
+			onClick={onClick}
+			style={{
+				position: "relative",
+				background: "none",
+				border: "none",
+				padding: "9px 14px 8px",
+				fontSize: 12.5,
+				fontWeight: active ? 600 : 400,
+				color: active ? "var(--text)" : "var(--text-muted)",
+				cursor: "pointer",
+				transition: "color 0.15s ease",
+				borderRadius: 0,
+			}}
+			onMouseEnter={(e) => {
+				if (!active) e.currentTarget.style.color = "var(--text)";
+			}}
+			onMouseLeave={(e) => {
+				if (!active) e.currentTarget.style.color = "var(--text-muted)";
+			}}
+		>
+			{label}
+			<span
+				style={{
+					position: "absolute",
+					left: 10,
+					right: 10,
+					bottom: 0,
+					height: 2,
+					borderRadius: "2px 2px 0 0",
+					background: active ? "var(--accent)" : "transparent",
+					transition: "background 0.15s ease",
+				}}
+			/>
+		</button>
+	);
+}
+
 export function SettingsDialog({ onClose }: Props) {
 	const { settings, update, reset } = useUiSettings();
 	const { t } = useI18n();
+	const [tab, setTab] = useState<SettingsTab>("general");
 	const [closing, setClosing] = useState(false);
 
 	// 关闭时先播放退出动画再真正卸载（动画强度为 none 时直接关闭）
@@ -143,9 +197,9 @@ export function SettingsDialog({ onClose }: Props) {
 				className={`dialog-pop${closing ? " dialog-pop-out" : ""}`}
 				style={{
 					animationDuration: popDuration,
-					width: 460,
+					width: 500,
 					maxWidth: "calc(100vw - 32px)",
-					maxHeight: "min(78vh, calc(100vh - 32px))",
+					maxHeight: "min(80vh, calc(100vh - 32px))",
 					background: "var(--bg)",
 					border: "1px solid var(--border)",
 					borderRadius: 12,
@@ -155,6 +209,7 @@ export function SettingsDialog({ onClose }: Props) {
 					overflow: "hidden",
 				}}
 			>
+				{/* Header */}
 				<div
 					style={{
 						display: "flex",
@@ -186,113 +241,129 @@ export function SettingsDialog({ onClose }: Props) {
 					</button>
 				</div>
 
-				<div style={{ padding: "4px 16px 14px", overflowY: "auto" }}>
-					<div
-						style={{
-							color: "var(--text-muted)",
-							fontSize: 11,
-							fontWeight: 600,
-							letterSpacing: "0.06em",
-							paddingTop: 10,
-						}}
-					>
-						{t("settings.streaming")}
-					</div>
-					<ToggleRow
-						label={t("settings.autoScroll")}
-						desc={t("settings.autoScrollDesc")}
-						checked={settings.autoScroll}
-						onChange={(v) => update({ autoScroll: v })}
+				{/* Tab bar */}
+				<div
+					role="tablist"
+					style={{
+						display: "flex",
+						gap: 2,
+						padding: "0 8px",
+						borderBottom: "1px solid var(--border)",
+						background: "var(--bg-panel)",
+						flexShrink: 0,
+					}}
+				>
+					<TabButton
+						label={t("settings.tabGeneral")}
+						active={tab === "general"}
+						onClick={() => setTab("general")}
 					/>
-					<ToggleRow
-						label={t("settings.charAnimation")}
-						desc={t("settings.charAnimationDesc")}
-						checked={settings.charAnimation}
-						onChange={(v) => update({ charAnimation: v })}
+					<TabButton
+						label={t("settings.tabUsage")}
+						active={tab === "usage"}
+						onClick={() => setTab("usage")}
 					/>
-					<ToggleRow
-						label={t("settings.thinkingAutoExpand")}
-						desc={t("settings.thinkingAutoExpandDesc")}
-						checked={settings.thinkingAutoExpand}
-						onChange={(v) => update({ thinkingAutoExpand: v })}
-					/>
+				</div>
 
-					<div
-						style={{
-							color: "var(--text-muted)",
-							fontSize: 11,
-							fontWeight: 600,
-							letterSpacing: "0.06em",
-							paddingTop: 14,
-							paddingBottom: 6,
-						}}
-					>
-						{t("settings.animationIntensity")}
-					</div>
-					<div style={{ display: "flex", gap: 8 }}>
-						<IntensityOption
-							label={t("settings.intensitySmooth")}
-							active={settings.animationIntensity === "smooth"}
-							onClick={() => update({ animationIntensity: "smooth" })}
-						/>
-						<IntensityOption
-							label={t("settings.intensityStandard")}
-							active={settings.animationIntensity === "standard"}
-							onClick={() => update({ animationIntensity: "standard" })}
-						/>
-						<IntensityOption
-							label={t("settings.intensityNone")}
-							active={settings.animationIntensity === "none"}
-							onClick={() => update({ animationIntensity: "none" })}
-						/>
-					</div>
-
-					<div
-						style={{
-							paddingTop: 14,
-							display: "flex",
-							justifyContent: "flex-end",
-						}}
-					>
-						<button
-							type="button"
-							onClick={reset}
-							style={{
-								border: "1px solid var(--border)",
-								background: "var(--bg-panel)",
-								color: "var(--text-muted)",
-								borderRadius: 7,
-								padding: "6px 14px",
-								fontSize: 12,
-								cursor: "pointer",
-							}}
-						>
-							{t("settings.reset")}
-						</button>
-					</div>
-
-					{/* 用量统计（Codex 风格）：按天统计 token 消耗，支持与插件数据联动 */}
-					<div
-						style={{
-							marginTop: 14,
-							paddingTop: 14,
-							borderTop: "1px solid var(--border)",
-						}}
-					>
+				{/* Content */}
+				{tab === "general" ? (
+					<div style={{ padding: "4px 16px 14px", overflowY: "auto" }}>
 						<div
 							style={{
 								color: "var(--text-muted)",
 								fontSize: 11,
 								fontWeight: 600,
 								letterSpacing: "0.06em",
-								paddingBottom: 10,
+								paddingTop: 10,
 							}}
 						>
-							{t("usage.title")}
+							{t("settings.streaming")}
 						</div>
+						<ToggleRow
+							label={t("settings.autoScroll")}
+							desc={t("settings.autoScrollDesc")}
+							checked={settings.autoScroll}
+							onChange={(v) => update({ autoScroll: v })}
+						/>
+						<ToggleRow
+							label={t("settings.charAnimation")}
+							desc={t("settings.charAnimationDesc")}
+							checked={settings.charAnimation}
+							onChange={(v) => update({ charAnimation: v })}
+						/>
+						<ToggleRow
+							label={t("settings.thinkingAutoExpand")}
+							desc={t("settings.thinkingAutoExpandDesc")}
+							checked={settings.thinkingAutoExpand}
+							onChange={(v) => update({ thinkingAutoExpand: v })}
+						/>
+
+						<div
+							style={{
+								color: "var(--text-muted)",
+								fontSize: 11,
+								fontWeight: 600,
+								letterSpacing: "0.06em",
+								paddingTop: 14,
+								paddingBottom: 6,
+							}}
+						>
+							{t("settings.animationIntensity")}
+						</div>
+						<div style={{ display: "flex", gap: 8 }}>
+							<IntensityOption
+								label={t("settings.intensitySmooth")}
+								active={settings.animationIntensity === "smooth"}
+								onClick={() => update({ animationIntensity: "smooth" })}
+							/>
+							<IntensityOption
+								label={t("settings.intensityStandard")}
+								active={settings.animationIntensity === "standard"}
+								onClick={() => update({ animationIntensity: "standard" })}
+							/>
+							<IntensityOption
+								label={t("settings.intensityNone")}
+								active={settings.animationIntensity === "none"}
+								onClick={() => update({ animationIntensity: "none" })}
+							/>
+						</div>
+
+						<div
+							style={{
+								paddingTop: 14,
+								display: "flex",
+								justifyContent: "flex-end",
+							}}
+						>
+							<button
+								type="button"
+								onClick={reset}
+								style={{
+									border: "1px solid var(--border)",
+									background: "var(--bg-panel)",
+									color: "var(--text-muted)",
+									borderRadius: 7,
+									padding: "6px 14px",
+									fontSize: 12,
+									cursor: "pointer",
+								}}
+							>
+								{t("settings.reset")}
+							</button>
+						</div>
+					</div>
+				) : (
+					<div
+						style={{
+							padding: "12px 16px 14px",
+							overflowY: "auto",
+							flex: 1,
+							minHeight: 0,
+						}}
+					>
 						<UsageStats />
 					</div>
-				</div>
+				)}
 			</div>
 		</div>
 	);

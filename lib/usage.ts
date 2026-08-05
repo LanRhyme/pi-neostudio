@@ -349,7 +349,8 @@ export function backfillUsage(options: { force?: boolean } = {}): Promise<number
             } catch {
               continue;
             }
-            if (recordFromEntry(filePath, entry)) added += 1;
+            const record = recordFromEntry(filePath, entry);
+            if (record && recordUsage(record)) added += 1;
           }
           state.scannedFiles.set(filePath, mtimeMs);
         }
@@ -384,7 +385,8 @@ function dayRange(days: number, now: Date): string[] {
 export async function getUsageSummary(options: { days?: number; forceBackfill?: boolean } = {}): Promise<UsageSummaryResponse> {
   await backfillUsage({ force: options.forceBackfill });
   const state = getState();
-  const days = Math.min(90, Math.max(1, Math.round(options.days ?? 30)));
+  // Up to ~1 year so the UI can render a GitHub-style contribution grid.
+  const days = Math.min(366, Math.max(1, Math.round(options.days ?? 30)));
   const now = new Date();
   const todayKey = localDayKey(now);
 
@@ -451,10 +453,4 @@ export async function getUsageDetail(day: string): Promise<UsageDetailResponse> 
     .filter((r) => localDayKey(r.timestamp) === day)
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   return { day, records };
-}
-
-/** Number of records currently held in memory (for debugging). */
-export function getUsageRecordCount(): number {
-  ensureLoaded();
-  return getState().records.size;
 }

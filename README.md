@@ -77,6 +77,7 @@ npx @agegr/pi-web@latest
 - **Chat beside the project**: browse files on the left and preview source, docs, images, audio, and PDFs on the right while the agent works.
 - **See session state clearly**: context usage, cost, compaction state, and system prompt details are visible from the top bar.
 - **Configure less from the terminal**: manage models, login/API keys, model tests, and skill switches from the web UI.
+- **Track daily token usage**: a GitHub-style contribution grid in Settings shows per-day tokens, cost, and per-model and per-session breakdowns.
 - **Use the interface in your language**: switch between the supported UI languages from the top bar.
 
 ## Notes
@@ -88,6 +89,7 @@ npx @agegr/pi-web@latest
 - **Git worktrees**: see [Worktrees in Pi Web](./docs/worktrees.md) for when the switcher appears, how new worktrees are created, and what removal does.
 - **Forks vs in-session branches**: Fork creates a new `.jsonl` file. "Edit from here" creates another branch inside the same session file.
 - **Internationalization**: see [Internationalization](./docs/i18n.md) for using translations and adding languages or UI text.
+- **Usage stats**: usage records live in `pi-web-usage.jsonl` in the pi agent directory; Pi Web records each assistant message live and backfills from session files when the Usage tab opens
 
 ## Development
 
