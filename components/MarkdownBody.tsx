@@ -26,24 +26,6 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
   }, [children, isStreaming]);
 
   const useBlur = children.length <= 150;
-  if (isPlain) {
-    return (
-      <div className={["markdown-body", className].filter(Boolean).join(" ")}>
-        <p className="char-stream">
-          {Array.from(children).map((ch, i) => (
-            <span
-              key={i}
-              className={useBlur ? "char-in" : "char-in-plain"}
-              style={{ animationDelay: `${Math.min(i * 4, 240)}ms` }}
-            >
-              {ch === " " ? "\u00A0" : ch}
-            </span>
-          ))}
-        </p>
-        {isStreaming && <span className="streaming-cursor" aria-hidden="true" />}
-      </div>
-    );
-  }
   // Stable renderer identities keep stateful blocks mounted across message hover updates.
   const components = useMemo<Components>(() => ({
     code({ className, children, ...props }) {
@@ -134,6 +116,25 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
       return <p>{children}</p>;
     },
   }), [cwd, isStreaming, onOpenFile]);
+  if (isPlain) {
+    return (
+      <div className={["markdown-body", className].filter(Boolean).join(" ")}>
+        <p className="char-stream">
+          {Array.from(children).map((ch, i) => (
+            <span
+              key={i}
+              className={useBlur ? "char-in" : "char-in-plain"}
+              style={{ animationDelay: `${Math.min(i * 4, 240)}ms` }}
+            >
+              {ch === " " ? "\u00A0" : ch}
+            </span>
+          ))}
+        </p>
+        {isStreaming && <span className="streaming-cursor" aria-hidden="true" />}
+      </div>
+    );
+  }
+
 
   return (
     <div className={["markdown-body", className].filter(Boolean).join(" ")}>
