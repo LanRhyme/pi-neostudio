@@ -39,6 +39,9 @@ export function GitPanel({ cwd, onOpenFile, onInsertText }: Props) {
 	const [commitMsg, setCommitMsg] = useState("");
 	const [isCommitting, setIsCommitting] = useState(false);
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [isPulling, setIsPulling] = useState(false);
+	const [isPushing, setIsPushing] = useState(false);
+	const [isSyncing, setIsSyncing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [genModel, setGenModel] = useState<string | null>(null);
 	const prevCwd = useRef(cwd);
@@ -182,6 +185,64 @@ export function GitPanel({ cwd, onOpenFile, onInsertText }: Props) {
 					borderBottom: "1px solid var(--border)",
 				}}
 			>
+				{/* Source Control Toolbar */}
+				<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: -2 }}>
+					<span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 6 }}>
+						{t("git.sourceControl") || "Source Control"}
+						{status?.branch && (
+							<span style={{ fontSize: 9, background: "var(--bg-hover)", padding: "2px 6px", borderRadius: 4, textTransform: "none", letterSpacing: "normal" }}>
+								<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: "inline-block", marginRight: 3, verticalAlign: "middle", marginTop: -2 }}><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+								{status.branch}
+							</span>
+						)}
+					</span>
+					<div style={{ display: "flex", gap: 6 }}>
+						<button
+							title={t("sidebar.refresh") || "Refresh"}
+							disabled={loading}
+							onClick={() => {
+								fetchStatus();
+								fetchHistory();
+							}}
+							style={{ background: "none", border: "none", color: loading ? "var(--border)" : "var(--text-muted)", cursor: loading ? "not-allowed" : "pointer", padding: 2, display: "flex", alignItems: "center", justifyContent: "center" }}
+						>
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+						</button>
+						<button
+							title={t("git.pull") || "Pull"}
+							disabled={isPulling || isSyncing}
+							onClick={() => {
+								setIsPulling(true);
+								handleAction("pull").finally(() => setIsPulling(false));
+							}}
+							style={{ background: "none", border: "none", color: (isPulling || isSyncing) ? "var(--border)" : "var(--text-muted)", cursor: (isPulling || isSyncing) ? "not-allowed" : "pointer", padding: 2, display: "flex", alignItems: "center", justifyContent: "center" }}
+						>
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+						</button>
+						<button
+							title={t("git.push") || "Push"}
+							disabled={isPushing || isSyncing}
+							onClick={() => {
+								setIsPushing(true);
+								handleAction("push").finally(() => setIsPushing(false));
+							}}
+							style={{ background: "none", border: "none", color: (isPushing || isSyncing) ? "var(--border)" : "var(--text-muted)", cursor: (isPushing || isSyncing) ? "not-allowed" : "pointer", padding: 2, display: "flex", alignItems: "center", justifyContent: "center" }}
+						>
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+						</button>
+						<button
+							title={t("git.sync") || "Sync Changes"}
+							disabled={isPulling || isPushing || isSyncing}
+							onClick={() => {
+								setIsSyncing(true);
+								handleAction("pull").then(() => handleAction("push")).finally(() => setIsSyncing(false));
+							}}
+							style={{ background: "none", border: "none", color: (isPulling || isPushing || isSyncing) ? "var(--border)" : "var(--text-muted)", cursor: (isPulling || isPushing || isSyncing) ? "not-allowed" : "pointer", padding: 2, display: "flex", alignItems: "center", justifyContent: "center" }}
+						>
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+						</button>
+					</div>
+				</div>
 				<textarea
 					value={commitMsg}
 					onChange={(e) => setCommitMsg(e.target.value)}

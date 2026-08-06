@@ -20,6 +20,7 @@ export interface GitStatusResponse {
   files: GitFileStatus[];
   additions: number;
   deletions: number;
+  branch?: string | null;
 }
 
 export interface GitFileDiffResponse {

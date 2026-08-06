@@ -35,6 +35,14 @@ async function findRepositoryRoot(cwd: string): Promise<string | null> {
   }
 }
 
+async function readCurrentBranch(repositoryRoot: string): Promise<string | null> {
+  try {
+    return (await git(repositoryRoot, ["branch", "--show-current"])).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 function isWithinPath(parent: string, target: string): boolean {
   const relative = path.relative(path.resolve(parent), path.resolve(target));
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
@@ -111,9 +119,10 @@ export async function getGitStatus(cwd: string): Promise<GitStatusResponse> {
     };
   }
 
-  const [entries, trackedLineStats] = await Promise.all([
+  const [entries, trackedLineStats, branch] = await Promise.all([
     readStatusEntries(repositoryRoot),
     readTrackedLineStats(repositoryRoot, cwd),
+    readCurrentBranch(repositoryRoot),
   ]);
   const files = entries.flatMap((entry): GitFileStatus[] => {
     const filePath = path.resolve(repositoryRoot, entry.path);
@@ -137,6 +146,7 @@ export async function getGitStatus(cwd: string): Promise<GitStatusResponse> {
     files,
     additions: trackedLineStats.additions + untrackedAdditions,
     deletions: trackedLineStats.deletions,
+    branch,
   };
 }
 
