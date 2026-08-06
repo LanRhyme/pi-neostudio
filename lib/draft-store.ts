@@ -6,6 +6,8 @@ export interface ChatDraftImage {
 export interface ChatDraft {
   value: string;
   images: ChatDraftImage[];
+  /** Tiptap document JSON — preserves atomic chips (mentions, collapsed text, DOM pickers) across session switches */
+  doc?: Record<string, unknown> | null;
 }
 
 const drafts = new Map<string, ChatDraft>();
@@ -14,6 +16,7 @@ function cloneDraft(draft: ChatDraft): ChatDraft {
   return {
     value: draft.value,
     images: draft.images.map((image) => ({ ...image })),
+    doc: draft.doc ? structuredClone(draft.doc) : undefined,
   };
 }
 
