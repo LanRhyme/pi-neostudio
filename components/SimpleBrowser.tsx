@@ -10,8 +10,8 @@ interface SimpleBrowserProps {
 
 export function SimpleBrowser({ initialUrl, onInsertText }: SimpleBrowserProps) {
   const { t } = useI18n();
-  const [url, setUrl] = useState(initialUrl || "http://localhost:3000");
-  const [inputUrl, setInputUrl] = useState(url);
+  const [url, setUrl] = useState(initialUrl || "");
+  const [inputUrl, setInputUrl] = useState(initialUrl || "");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isInspecting, setIsInspecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -266,7 +266,7 @@ export function SimpleBrowser({ initialUrl, onInsertText }: SimpleBrowserProps) 
                 outline: "none",
                 width: "100%"
               }}
-              placeholder="http://localhost:3000"
+              placeholder="输入网址，例如 http://localhost:3000"
             />
           </div>
         </form>
@@ -317,20 +317,53 @@ export function SimpleBrowser({ initialUrl, onInsertText }: SimpleBrowserProps) 
         </div>
       )}
 
-      {/* Browser Viewport */}
-      <div style={{ flex: 1, backgroundColor: "#fff", position: "relative" }}>
-        <iframe
-          ref={iframeRef}
-          src={url}
-          title="Simple Browser"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-          style={{
-            width: "100%",
-            height: "100%",
-            border: "none",
-            display: "block",
-          }}
-        />
+      {/* Browser Viewport / Home */}
+      <div style={{ flex: 1, backgroundColor: url ? "#fff" : "var(--bg)", position: "relative" }}>
+        {!url ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text)' }}>
+            <h2 style={{ fontSize: 28, fontWeight: 500, marginBottom: 48, display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text)' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              内嵌浏览器
+            </h2>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 600 }}>
+              {[
+                { name: "Next.js", port: "3000", icon: <path d="M9 18l6-6-6-6"></path> },
+                { name: "Vite / React", port: "5173", icon: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon> },
+                { name: "Vue / Webpack", port: "8080", icon: <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path> }
+              ].map(item => (
+                <button 
+                  key={item.port} 
+                  onClick={() => { const target = `http://localhost:${item.port}`; setInputUrl(target); setUrl(target); }} 
+                  style={{ padding: '20px 24px', background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, transition: 'all 0.2s', width: 150 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.transform = "none"; }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{item.icon}</svg>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{item.name}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>localhost:{item.port}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p style={{ marginTop: 48, fontSize: 13, color: 'var(--text-muted)' }}>
+              在上方地址栏输入你要预览的网页地址
+            </p>
+          </div>
+        ) : (
+          <iframe
+            ref={iframeRef}
+            src={url}
+            title="Simple Browser"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+              display: "block",
+            }}
+          />
+        )}
       </div>
     </div>
   );

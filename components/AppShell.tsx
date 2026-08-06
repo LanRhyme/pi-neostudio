@@ -864,7 +864,7 @@ export function AppShell() {
         <div ref={topBarRef} className="page-enter-top" style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)", position: "relative", zIndex: 100 }}>
           <SidebarToggleButton size={TOP_BAR_ICON_BUTTON_SIZE} />
           <button
-            onClick={() => handleOpenFile("browser://http://localhost:3000", "Browser")}
+            onClick={() => handleOpenFile("browser://", "Browser")}
             title="内嵌浏览器 (Browser)"
             aria-label="内嵌浏览器 (Browser)"
             style={{
