@@ -6,6 +6,33 @@ import { useI18n } from "@/hooks/useI18n";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { FileExplorer, type FileExplorerHandle } from "./FileExplorer";
 import { GitPanel } from "./GitPanel";
+import type { SessionSearchResult } from "@/app/api/sessions/search/route";
+
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark
+            key={i}
+            style={{
+              background: "rgba(245, 158, 11, 0.25)",
+              color: "var(--accent)",
+              borderRadius: 2,
+              padding: "0 2px",
+            }}
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
 
 declare global {
   interface Window {
@@ -430,6 +457,41 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const sessionRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const explorerRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileExplorerRef = useRef<FileExplorerHandle>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SessionSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    let active = true;
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/sessions/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error("Search failed");
+        const data = (await res.json()) as { results: SessionSearchResult[] };
+        if (active) {
+          setSearchResults(data.results || []);
+        }
+      } catch {
+        if (active) setSearchResults([]);
+      } finally {
+        if (active) setIsSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
 
   const loadSessions = useCallback(async (showLoading = false) => {
     try {
@@ -1523,48 +1585,199 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         )}
       </div>
 
+      {/* Search Input Bar */}
+      <div style={{ padding: "0 10px 6px" }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--text-muted)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ position: "absolute", left: 8, pointerEvents: "none" }}
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("sidebar.searchPlaceholder")}
+              style={{
+                width: "100%",
+                padding: "5px 22px 5px 26px",
+                fontSize: 11,
+                fontFamily: "var(--font-mono)",
+                background: "var(--bg-hover)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                color: "var(--text)",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                style={{
+                  position: "absolute",
+                  right: 5,
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  padding: 2,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
       {/* Session list */}
       <div
         key={selectedCwd ?? "all"}
         className="panel-content-in"
         style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}
       >
-        {loading && (
-          <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
-            {t("sidebar.loading")}
+        {searchQuery.trim().length >= 2 ? (
+          <div style={{ padding: "8px 0" }}>
+            <div style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>{t("sidebar.searchResults")}</span>
+              {isSearching ? (
+                <span style={{ fontSize: 10, fontWeight: "normal", color: "var(--text-dim)" }}>Searching…</span>
+              ) : (
+                <span style={{ fontSize: 10, fontWeight: "normal", color: "var(--text-dim)" }}>{searchResults.length} sessions</span>
+              )}
+            </div>
+
+            {!isSearching && searchResults.length === 0 && (
+              <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
+                {t("sidebar.noSearchResults")}
+              </div>
+            )}
+
+            {searchResults.map((item) => {
+              const targetSession = allSessions.find((s) => s.id === item.sessionId);
+              const displayName = item.name || item.firstMessage || item.sessionId.slice(0, 8);
+              return (
+                <div
+                  key={item.sessionId}
+                  style={{
+                    margin: "0 8px 6px",
+                    padding: "8px 10px",
+                    background: selectedSessionId === item.sessionId ? "var(--bg-selected)" : "var(--bg-hover)",
+                    border: selectedSessionId === item.sessionId ? "1px solid rgba(37,99,235,0.4)" : "1px solid var(--border)",
+                    borderRadius: 7,
+                    cursor: "pointer",
+                    transition: "background 0.15s, border-color 0.15s",
+                  }}
+                  onClick={() => {
+                    if (targetSession) {
+                      onSelectSession(targetSession);
+                    } else {
+                      onSelectSession({
+                        id: item.sessionId,
+                        path: "",
+                        cwd: item.cwd || "",
+                        firstMessage: item.firstMessage,
+                        created: item.created,
+                        modified: item.modified,
+                        messageCount: 0,
+                      });
+                    }
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <HighlightText text={displayName} query={searchQuery.trim()} />
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--accent)", background: "rgba(37,99,235,0.1)", padding: "1px 5px", borderRadius: 4, flexShrink: 0, marginLeft: 6 }}>
+                      {item.matchCount} {item.matchCount === 1 ? "match" : "matches"}
+                    </span>
+                  </div>
+
+                  {item.cwd && (
+                    <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--text-dim)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {displayCwd(item.cwd, homeDir)}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {item.snippets.map((snip, idx) => (
+                      <div
+                        key={`${snip.entryId}-${idx}`}
+                        style={{
+                          fontSize: 11,
+                          lineHeight: 1.35,
+                          color: "var(--text-muted)",
+                          background: "var(--bg)",
+                          padding: "4px 6px",
+                          borderRadius: 4,
+                          borderLeft: "2px solid var(--accent)",
+                        }}
+                      >
+                        <span style={{ fontSize: 9, textTransform: "uppercase", fontWeight: 600, color: "var(--text-dim)", marginRight: 4 }}>
+                          [{snip.role}]
+                        </span>
+                        <HighlightText text={snip.snippet} query={searchQuery.trim()} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        ) : (
+          <>
+            {loading && (
+              <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
+                {t("sidebar.loading")}
+              </div>
+            )}
+            {error && (
+              <div style={{ padding: "12px 14px", color: "var(--danger)", fontSize: 12 }}>
+                {error}
+              </div>
+            )}
+            {!loading && !error && filteredSessions.length === 0 && (
+              <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
+                {t("sidebar.noSessions")}
+              </div>
+            )}
+            {sessionTree.map((node, idx) => (
+              <div
+                key={node.session.id}
+                className="list-item-in"
+                style={{ animationDelay: `${Math.min(idx * 30, 420)}ms` }}
+              >
+              <SessionTreeItem
+                node={node}
+                selectedSessionId={selectedSessionId}
+                runningSessionIds={runningSessionIds}
+                unreadSessionIds={unreadSessionIds}
+                onSelectSession={handleSelectSessionFromList}
+                onRenamed={loadSessions}
+                onSessionDeleted={(id) => {
+                  onSessionDeleted?.(id);
+                  loadSessions();
+                }}
+                depth={0}
+              />
+              </div>
+            ))}
+          </>
         )}
-        {error && (
-          <div style={{ padding: "12px 14px", color: "var(--danger)", fontSize: 12 }}>
-            {error}
-          </div>
-        )}
-        {!loading && !error && filteredSessions.length === 0 && (
-          <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
-            {t("sidebar.noSessions")}
-          </div>
-        )}
-        {sessionTree.map((node, idx) => (
-          <div
-            key={node.session.id}
-            className="list-item-in"
-            style={{ animationDelay: `${Math.min(idx * 30, 420)}ms` }}
-          >
-          <SessionTreeItem
-            node={node}
-            selectedSessionId={selectedSessionId}
-            runningSessionIds={runningSessionIds}
-            unreadSessionIds={unreadSessionIds}
-            onSelectSession={handleSelectSessionFromList}
-            onRenamed={loadSessions}
-            onSessionDeleted={(id) => {
-              onSessionDeleted?.(id);
-              loadSessions();
-            }}
-            depth={0}
-          />
-          </div>
-        ))}
       </div>
 
       {/* File Explorer section */}
