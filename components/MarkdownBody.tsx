@@ -59,8 +59,16 @@ function MarkdownBodyImpl({ children, className, isStreaming, cwd, onOpenFile }:
       const filePath = onOpenFile ? resolveLocalFileHref(href, cwd) : null;
       const openFile = onOpenFile;
       if (!filePath || !openFile) {
+        const handleExternalClick = (event: MouseEvent<HTMLAnchorElement>) => {
+          if (event.defaultPrevented || event.button !== 0) return;
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          if (!href || !href.startsWith("http")) return; // Let mailto/tel pass through normally
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent("pi-external-link", { detail: href }));
+        };
+
         return (
-          <a href={href} {...props} target="_blank" rel="noopener noreferrer">
+          <a href={href} {...props} target="_blank" rel="noopener noreferrer" onClick={handleExternalClick}>
             {children}
           </a>
         );

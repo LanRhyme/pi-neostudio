@@ -62,6 +62,7 @@ function createWindow(url) {
 			contextIsolation: true,
 			nodeIntegration: false,
 			spellcheck: false,
+			webSecurity: false, // 允许跨域（使内置 SimpleBrowser 的 iframe 可以拾取任何网址的 DOM）
 		},
 	});
 	mainWindow.loadURL(url);

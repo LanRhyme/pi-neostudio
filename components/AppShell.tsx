@@ -7,6 +7,7 @@ import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
 import { FileViewer } from "./FileViewer";
+import { SimpleBrowser } from "./SimpleBrowser";
 import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SettingsDialogHost } from "./SettingsDialog";
@@ -200,6 +201,17 @@ export function AppShell() {
       setCopiedSessionField(field);
       sessionCopyTimerRef.current = setTimeout(() => setCopiedSessionField(null), 1400);
     });
+  }, []);
+
+  const [externalLinkToOpen, setExternalLinkToOpen] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      setExternalLinkToOpen(customEvent.detail);
+    };
+    window.addEventListener("pi-external-link", handler);
+    return () => window.removeEventListener("pi-external-link", handler);
   }, []);
 
   useEffect(() => {
@@ -734,6 +746,24 @@ export function AppShell() {
   return (
     <UiSettingsProvider>
     <>
+      {externalLinkToOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setExternalLinkToOpen(null)}>
+          <div style={{ background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 12, padding: 24, width: 400, maxWidth: "90vw", boxShadow: "0 8px 30px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: 16, color: "var(--text)" }}>打开链接</h3>
+            <p style={{ margin: "0 0 24px 0", fontSize: 13, color: "var(--text-muted)", wordBreak: "break-all" }}>{externalLinkToOpen}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <button onClick={() => { handleOpenFile("browser://" + externalLinkToOpen, "Browser"); setExternalLinkToOpen(null); }} style={{ background: "var(--accent)", color: "white", border: "none", padding: "10px 16px", borderRadius: 6, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                在内置浏览器 (Simple Browser) 中打开
+              </button>
+              <button onClick={() => { window.open(externalLinkToOpen, "_blank"); setExternalLinkToOpen(null); }} style={{ background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)", padding: "10px 16px", borderRadius: 6, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                跳转系统默认外部浏览器
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     <style>{`
       @keyframes session-info-pop {
         0% {
@@ -833,6 +863,23 @@ export function AppShell() {
         {/* Top bar with sidebar toggle */}
         <div ref={topBarRef} className="page-enter-top" style={{ display: "flex", alignItems: "center", flexShrink: 0, borderBottom: "1px solid var(--border)", height: "calc(36px + env(safe-area-inset-top))", paddingTop: "env(safe-area-inset-top)", background: "var(--bg-panel)", position: "relative", zIndex: 100 }}>
           <SidebarToggleButton size={TOP_BAR_ICON_BUTTON_SIZE} />
+          <button
+            onClick={() => handleOpenFile("browser://http://localhost:3000", "Browser")}
+            title="内嵌浏览器 (Browser)"
+            aria-label="内嵌浏览器 (Browser)"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
+              background: "none", border: "none", borderRight: "1px solid var(--border)",
+              color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </button>
           <button
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -1661,19 +1708,26 @@ export function AppShell() {
         {/* File content */}
         <div style={{ flex: 1, overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom)" }}>
           {activeFileTab?.filePath ? (
-            <FileViewer
-              filePath={activeFileTab.filePath}
-              cwd={activeCwd ?? undefined}
-              sourceSessionId={activeFileTab.sourceSessionId}
-              gitRefreshKey={explorerRefreshKey}
-              initialDisplayMode={activeFileTab.initialDisplayMode}
-              onMentionLines={handleFileLineMention}
-              onOpenFile={(filePath) => handleOpenFile(
-                filePath,
-                getFileName(filePath),
-                { sourceSessionId: activeFileTab.sourceSessionId },
-              )}
-            />
+            activeFileTab.filePath.startsWith("browser://") ? (
+              <SimpleBrowser 
+                initialUrl={activeFileTab.filePath.replace("browser://", "")} 
+                onInsertText={handleInsertText} 
+              />
+            ) : (
+              <FileViewer
+                filePath={activeFileTab.filePath}
+                cwd={activeCwd ?? undefined}
+                sourceSessionId={activeFileTab.sourceSessionId}
+                gitRefreshKey={explorerRefreshKey}
+                initialDisplayMode={activeFileTab.initialDisplayMode}
+                onMentionLines={handleFileLineMention}
+                onOpenFile={(filePath) => handleOpenFile(
+                  filePath,
+                  getFileName(filePath),
+                  { sourceSessionId: activeFileTab.sourceSessionId },
+                )}
+              />
+            )
           ) : (
             <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
                {translate("files.noneOpen")}

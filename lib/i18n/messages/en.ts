@@ -277,6 +277,7 @@ export const enLocale: LocalePlugin = {
 		"i18n.search": "Search",
 		"i18n.refresh": "Refresh",
 		"i18n.update": "Update",
+		"i18n.updateAll": "Update All",
 		"i18n.updating": "Updating...",
 		"i18n.check": "Check",
 		"i18n.checking": "Checking...",

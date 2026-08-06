@@ -635,6 +635,7 @@ export function PluginsConfig({
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [isUpdatingAll, setIsUpdatingAll] = useState(false);
 
   const packages = useMemo(() => data?.packages ?? [], [data?.packages]);
   const selectedPackage = packages.find((pkg) => packageKey(pkg) === selected) ?? null;
@@ -669,6 +670,33 @@ export function PluginsConfig({
   useEffect(() => {
     void loadPlugins();
   }, [loadPlugins]);
+
+  const handleUpdateAll = useCallback(async () => {
+    if (packages.length === 0) return;
+    setIsUpdatingAll(true);
+    let errorCount = 0;
+    for (const pkg of packages) {
+      setBusyKey(`update:${packageKey(pkg)}`);
+      try {
+        const res = await fetch("/api/plugins", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "update", scope: pkg.scope, source: pkg.source, cwd }),
+        });
+        if (!res.ok) errorCount++;
+      } catch {
+        errorCount++;
+      }
+    }
+    setBusyKey(null);
+    await loadPlugins();
+    setIsUpdatingAll(false);
+    if (errorCount > 0) {
+      setActionError(`Failed to update ${errorCount} package(s)`);
+    } else {
+      setActionMessage("All packages updated successfully.");
+    }
+  }, [packages, cwd, loadPlugins]);
 
   const runAction = useCallback(async (action: PluginAction, pkg: PluginPackageInfo) => {
     const key = packageKey(pkg);
@@ -811,20 +839,70 @@ export function PluginsConfig({
               {shortenPath(cwd)}
             </code>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: 20,
-              lineHeight: 1,
-              padding: "2px 6px",
-            }}
-          >
-            ×
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <a
+              href="https://pi.dev/packages"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                color: "var(--accent)",
+                fontSize: 12,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 800 800" aria-hidden="true" focusable="false" style={{ flexShrink: 0 }}>
+                <path fill="currentColor" fillRule="evenodd" d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z" />
+                <path fill="currentColor" d="M517.36 400H634.72V634.72H517.36Z" />
+              </svg>
+              pi.dev/packages
+            </a>
+
+            <button
+              onClick={handleUpdateAll}
+              disabled={isUpdatingAll || packages.length === 0}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                color: "var(--text)",
+                fontSize: 11,
+                padding: "3px 8px",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
+                background: "var(--bg-panel)",
+                cursor: (isUpdatingAll || packages.length === 0) ? "not-allowed" : "pointer",
+                opacity: (isUpdatingAll || packages.length === 0) ? 0.5 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!isUpdatingAll && packages.length > 0) e.currentTarget.style.background = "var(--bg-hover)";
+              }}
+              onMouseLeave={(e) => {
+                if (!isUpdatingAll && packages.length > 0) e.currentTarget.style.background = "var(--bg-panel)";
+              }}
+            >
+               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+               {isUpdatingAll ? t("i18n.updating") || "Updating..." : t("i18n.updateAll", { fallback: "Update All" })}
+            </button>
+
+            <button
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: 20,
+                lineHeight: 1,
+                padding: "2px 6px",
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {!projectResourcesLoaded && (

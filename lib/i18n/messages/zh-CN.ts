@@ -270,6 +270,7 @@ export const zhCNLocale: LocalePlugin = {
 		"i18n.search": "搜索",
 		"i18n.refresh": "刷新",
 		"i18n.update": "更新",
+		"i18n.updateAll": "一键更新",
 		"i18n.updating": "更新中...",
 		"i18n.check": "检查",
 		"i18n.checking": "检查中...",
