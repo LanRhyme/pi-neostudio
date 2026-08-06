@@ -14,9 +14,10 @@ async function git(cwd: string, args: string[]): Promise<{ stdout: string; stder
       env: { ...process.env, LC_ALL: "C" },
     });
     return { stdout, stderr };
-  } catch (err: any) {
-    if (err.stdout !== undefined || err.stderr !== undefined) {
-      throw new Error(err.stderr || err.stdout || err.message);
+  } catch (err: unknown) {
+    const e = err as { stdout?: string; stderr?: string; message?: string };
+    if (e.stdout !== undefined || e.stderr !== undefined) {
+      throw new Error(e.stderr || e.stdout || e.message || String(err));
     }
     throw err;
   }

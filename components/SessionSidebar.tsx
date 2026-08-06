@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { SessionInfo } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
 import { DirectoryPicker } from "./DirectoryPicker";
@@ -177,13 +178,141 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
+const HIDDEN_PROJECTS_STORAGE_KEY = "pi-web:hidden-projects";
+const PINNED_PROJECTS_STORAGE_KEY = "pi-web:pinned-projects";
+
+function loadHiddenProjects(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(HIDDEN_PROJECTS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? new Set(parsed.filter((p): p is string => typeof p === "string")) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHiddenProjects(projects: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (projects.size === 0) window.localStorage.removeItem(HIDDEN_PROJECTS_STORAGE_KEY);
+    else window.localStorage.setItem(HIDDEN_PROJECTS_STORAGE_KEY, JSON.stringify([...projects]));
+  } catch {
+    // ignore
+  }
+}
+
+function loadPinnedProjects(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(PINNED_PROJECTS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? new Set(parsed.filter((p): p is string => typeof p === "string")) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function savePinnedProjects(projects: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (projects.size === 0) window.localStorage.removeItem(PINNED_PROJECTS_STORAGE_KEY);
+    else window.localStorage.setItem(PINNED_PROJECTS_STORAGE_KEY, JSON.stringify([...projects]));
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Return all projects (deduped by projectRoot so worktrees collapse into their
- * main repo) sorted by most recent session activity.
+ * main repo) sorted by pinned status and most recent session activity.
  */
-function getRecentProjects(sessions: SessionInfo[]): string[] {
+function getRecentProjects(
+  sessions: SessionInfo[],
+  hiddenProjects: Set<string> = new Set(),
+  pinnedProjects: Set<string> = new Set()
+): string[] {
   const latestByRoot = new Map<string, string>(); // projectRoot -> most recent modified
   for (const s of sessions) {
+    const root = s.projectRoot ?? s.cwd;
+    if (!root || hiddenProjects.has(root)) continue;
+    const prev = latestByRoot.get(root);
+    if (!prev || s.modified > prev) {
+      latestByRoot.set(root, s.modified);
+    }
+  }
+  return [...latestByRoot.entries()]
+    .sort((a, b) => {
+      const isPinnedA = pinnedProjects.has(a[0]);
+      const isPinnedB = pinnedProjects.has(b[0]);
+      if (isPinnedA && !isPinnedB) return -1;
+      if (!isPinnedA && isPinnedB) return 1;
+      return b[1].localeCompare(a[1]);
+    })
+    .map(([root]) => root);
+}
+
+/** Substitute the home dir prefix with ~ (no path truncation — see PathLabel) */
+function displayCwd(cwd: string, homeDir?: string): string {
+  return (homeDir && cwd.startsWith(homeDir)) ? "~" + cwd.slice(homeDir.length) : cwd;
+}
+
+function WorkspaceManagerModal({
+  open,
+  onClose,
+  allSessions,
+  selectedCwd,
+  hiddenProjects,
+  pinnedProjects,
+  onSelectCwd,
+  onTogglePin,
+  onRemoveProject,
+  onOpenCustomPath,
+  onDefaultCwd,
+  homeDir,
+}: {
+  open: boolean;
+  onClose: () => void;
+  allSessions: SessionInfo[];
+  selectedCwd: string | null;
+  hiddenProjects: Set<string>;
+  pinnedProjects: Set<string>;
+  onSelectCwd: (cwd: string) => void;
+  onTogglePin: (project: string) => void;
+  onRemoveProject: (project: string) => void;
+  onOpenCustomPath: () => void;
+  onDefaultCwd: () => void;
+  homeDir?: string;
+}) {
+  const [filterText, setFilterText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const { t } = useI18n();
+
+  useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (open) {
+      setFilterText("");
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
+
+  if (!open || !mounted) return null;
+
+  const allProjectRoots = [...new Set(allSessions.map((s) => s.projectRoot ?? s.cwd).filter(Boolean))];
+  if (selectedCwd && !allProjectRoots.includes(selectedCwd)) {
+    allProjectRoots.unshift(selectedCwd);
+  }
+
+  // Active only — removed items are simply gone!
+  const activeProjects = allProjectRoots.filter((p) => !hiddenProjects.has(p));
+
+  // Calculate most recent activity per project
+  const latestByRoot = new Map<string, string>();
+  for (const s of allSessions) {
     const root = s.projectRoot ?? s.cwd;
     if (!root) continue;
     const prev = latestByRoot.get(root);
@@ -191,14 +320,206 @@ function getRecentProjects(sessions: SessionInfo[]): string[] {
       latestByRoot.set(root, s.modified);
     }
   }
-  return [...latestByRoot.entries()]
-    .sort((a, b) => b[1].localeCompare(a[1]))
-    .map(([root]) => root);
-}
 
-/** Substitute the home dir prefix with ~ (no path truncation — see PathLabel) */
-function displayCwd(cwd: string, homeDir?: string): string {
-  return (homeDir && cwd.startsWith(homeDir)) ? "~" + cwd.slice(homeDir.length) : cwd;
+  activeProjects.sort((a, b) => {
+    const isPinnedA = pinnedProjects.has(a);
+    const isPinnedB = pinnedProjects.has(b);
+    if (isPinnedA && !isPinnedB) return -1;
+    if (!isPinnedA && isPinnedB) return 1;
+    
+    const timeA = latestByRoot.get(a) || "";
+    const timeB = latestByRoot.get(b) || "";
+    if (timeA !== timeB) {
+      return timeB.localeCompare(timeA);
+    }
+    return a.localeCompare(b);
+  });
+
+  const query = filterText.trim().toLowerCase();
+  const filteredActive = activeProjects.filter((p) =>
+    displayCwd(p, homeDir).toLowerCase().includes(query) || p.toLowerCase().includes(query)
+  );
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(0, 0, 0, 0.4)",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        paddingTop: "12vh",
+        animation: "paletteFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
+      onClick={onClose}
+    >
+      <style>{`
+        @keyframes paletteFadeIn {
+          from { opacity: 0; transform: translateY(-8px) scale(0.99); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 640,
+          background: "var(--bg)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          boxShadow: "0 16px 48px rgba(0,0,0,0.4)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Large Command Palette Input */}
+        <div style={{ display: "flex", alignItems: "center", padding: "0 16px", borderBottom: "1px solid var(--border)" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            ref={inputRef}
+            type="text"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            placeholder={t("sidebar.searchWorkspaces") || "Search workspaces..."}
+            style={{
+              flex: 1,
+              height: 52,
+              padding: "0 12px",
+              fontSize: 15,
+              background: "transparent",
+              border: "none",
+              color: "var(--text)",
+              outline: "none",
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onClose();
+            }}
+          />
+        </div>
+
+        {/* Minimal List */}
+        <div style={{ maxHeight: "60vh", overflowY: "auto", padding: "6px 0" }}>
+          {filteredActive.length > 0 && (
+            <div style={{ padding: "6px 16px 4px", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {t("sidebar.activeWorkspaces") || "Active Workspaces"}
+            </div>
+          )}
+          {filteredActive.map((proj) => {
+            const isSelected = selectedCwd === proj;
+            const isPinned = pinnedProjects.has(proj);
+
+            return (
+              <div
+                key={proj}
+                className="workspace-palette-item"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 16px",
+                  cursor: "pointer",
+                  background: isSelected ? "var(--bg-selected)" : "transparent",
+                  borderLeft: isSelected ? "2px solid var(--accent)" : "2px solid transparent",
+                }}
+                onClick={() => {
+                  onSelectCwd(proj);
+                  onClose();
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) e.currentTarget.style.background = "var(--bg-hover)";
+                  const actions = e.currentTarget.querySelector('.ws-actions') as HTMLElement;
+                  if (actions) actions.style.opacity = "1";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) e.currentTarget.style.background = "transparent";
+                  const actions = e.currentTarget.querySelector('.ws-actions') as HTMLElement;
+                  if (actions) actions.style.opacity = "0";
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, overflow: "hidden" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill={isPinned ? "var(--text)" : "none"} stroke="var(--text-muted)" strokeWidth="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  <span style={{ fontSize: 13, color: "var(--text)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {displayCwd(proj, homeDir)}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {proj}
+                  </span>
+                </div>
+
+                <div className="ws-actions" style={{ display: "flex", gap: 4, opacity: 0, transition: "opacity 0.15s" }} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => onTogglePin(proj)}
+                    title={isPinned ? t("sidebar.unpinProject") : t("sidebar.pinProject")}
+                    style={{ background: "none", border: "none", padding: 4, color: "var(--text-muted)", cursor: "pointer", borderRadius: 4 }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "var(--text)"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-muted)"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onRemoveProject(proj)}
+                    title={t("sidebar.removeProject") || "Remove from list"}
+                    style={{ background: "none", border: "none", padding: 4, color: "var(--text-muted)", cursor: "pointer", borderRadius: 4 }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "var(--danger)"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-muted)"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredActive.length === 0 && (
+            <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--text-dim)", fontSize: 13 }}>
+              {t("sidebar.noWorkspacesFound") || "No workspaces found."}
+            </div>
+          )}
+
+          {/* Special Actions */}
+          <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+            <div
+              style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", color: "var(--text-muted)" }}
+              onClick={() => { onClose(); onOpenCustomPath(); }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span style={{ fontSize: 13 }}>{t("sidebar.openFolderAction") || "Open Folder..."}</span>
+            </div>
+            <div
+              style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", color: "var(--text-muted)" }}
+              onClick={() => { onClose(); onDefaultCwd(); }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+              <span style={{ fontSize: 13 }}>{t("sidebar.openDefaultAction") || "Open Default Workspace"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 /**
@@ -429,6 +750,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [customPathError, setCustomPathError] = useState<string | null>(null);
   const [customPathValidating, setCustomPathValidating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [hiddenProjects, setHiddenProjects] = useState<Set<string>>(() => loadHiddenProjects());
+  const [pinnedProjects, setPinnedProjects] = useState<Set<string>>(() => loadPinnedProjects());
+  const [manageWorkspacesOpen, setManageWorkspacesOpen] = useState(false);
+
+  useEffect(() => {
+    saveHiddenProjects(hiddenProjects);
+  }, [hiddenProjects]);
+
+  useEffect(() => {
+    savePinnedProjects(pinnedProjects);
+  }, [pinnedProjects]);
   // Worktree switcher state
   const [worktreeState, setWorktreeState] = useState<WorktreeState | null>(null);
   const [wtDropdownOpen, setWtDropdownOpen] = useState(false);
@@ -725,7 +1057,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         // Session not found — notify parent so it can show the placeholder
         onInitialRestoreDone?.();
       }
-      const projects = getRecentProjects(allSessions);
+      const projects = getRecentProjects(allSessions, hiddenProjects, pinnedProjects);
       if (projects.length > 0) setSelectedCwd(projects[0]);
     }
   }, [allSessions, selectedCwd, initialSessionId, skipInitialProjectSelection, onSelectSession, onInitialRestoreDone]);
@@ -884,7 +1216,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     onNewSession?.(tempId, selectedCwd);
   }, [selectedCwd, onNewSession]);
 
-  const recentProjects = getRecentProjects(allSessions);
+  const recentProjects = getRecentProjects(allSessions, hiddenProjects, pinnedProjects);
   const showProjectFilter = recentProjects.length > 8;
   const visibleProjects = projectFilter.trim()
     ? recentProjects.filter((p) => p.toLowerCase().includes(projectFilter.trim().toLowerCase()))
@@ -1036,6 +1368,36 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 </svg>
               )}
             </button>
+            <button
+              onClick={() => setManageWorkspacesOpen(true)}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "var(--bg-hover)",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                width: 32, height: 32,
+                borderRadius: 7,
+                padding: 0,
+                flexShrink: 0,
+                transition: "background 0.3s, color 0.3s, border-color 0.3s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-selected)";
+                e.currentTarget.style.color = "var(--accent)";
+                e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text-muted)";
+                e.currentTarget.style.borderColor = "var(--border)";
+              }}
+              title="Workspace Manager (工作区管理)"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -1101,7 +1463,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               overflow: "hidden",
             }}
           >
-              {showProjectFilter && (
+              {(showProjectFilter || recentProjects.length > 2) && (
                 <div style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)" }}>
                   <input
                     value={projectFilter}
@@ -1112,7 +1474,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                         setDropdownOpen(false);
                       }
                     }}
-                     placeholder={t("sidebar.filterProjects")}
+                    placeholder={t("sidebar.filterProjects")}
                     autoFocus
                     style={{
                       width: "100%",
@@ -1130,48 +1492,97 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 </div>
               )}
               <div style={{ maxHeight: "min(50vh, 380px)", overflowY: "auto" }}>
-                {visibleProjects.map((project) => (
-                  <button
-                    key={project}
-                    onClick={() => {
-                      setSelectedCwd(project);
-                      setProjectFilter("");
-                      setCustomPathOpen(false);
-                      setCustomPathValue("");
-                      setCustomPathError(null);
-                      setDropdownOpen(false);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      width: "100%",
-                      padding: "8px 10px",
-                      background: "var(--bg)",
-                      border: "none",
-                      borderBottom: "1px solid var(--border)",
-                      color: project === selectedProject ? "var(--text)" : "var(--text-muted)",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      fontSize: 11,
-                      fontFamily: "var(--font-mono)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={project}
-                  >
-                    {project === selectedProject && (
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                        <polyline points="1.5 5 4 7.5 8.5 2.5" />
-                      </svg>
-                    )}
-                    {project !== selectedProject && <span style={{ width: 10, flexShrink: 0 }} />}
-                    <PathLabel text={displayCwd(project, homeDir)} style={{ flex: 1 }} />
-                  </button>
-                ))}
+                {visibleProjects.map((project) => {
+                  const isPinned = pinnedProjects.has(project);
+                  const isSelected = project === selectedProject;
+                  return (
+                    <div
+                      key={project}
+                      onClick={() => {
+                        setSelectedCwd(project);
+                        setProjectFilter("");
+                        setCustomPathOpen(false);
+                        setCustomPathValue("");
+                        setCustomPathError(null);
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        width: "100%",
+                        padding: "7px 10px",
+                        background: isSelected ? "var(--bg-selected)" : "var(--bg)",
+                        borderBottom: "1px solid var(--border)",
+                        color: isSelected ? "var(--text)" : "var(--text-muted)",
+                        cursor: "pointer",
+                        fontSize: 11,
+                        fontFamily: "var(--font-mono)",
+                        boxSizing: "border-box",
+                      }}
+                      title={project}
+                    >
+                      {/* Pin button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPinnedProjects((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(project)) next.delete(project);
+                            else next.add(project);
+                            return next;
+                          });
+                        }}
+                        title={isPinned ? t("sidebar.unpinProject") : t("sidebar.pinProject")}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 2,
+                          color: isPinned ? "var(--accent)" : "var(--text-dim)",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      </button>
+
+                      <PathLabel text={displayCwd(project, homeDir)} style={{ flex: 1 }} />
+
+                      {/* Remove button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHiddenProjects((prev) => new Set([...prev, project]));
+                          if (selectedProject === project) {
+                            setSelectedCwd(null);
+                          }
+                        }}
+                        title={t("sidebar.removeProject")}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 2,
+                          color: "var(--text-dim)",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--danger)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
                 {visibleProjects.length === 0 && projectFilter.trim() && (
-                   <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-dim)" }}>{t("sidebar.noMatchingProjects")}</div>
+                  <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-dim)" }}>{t("sidebar.noMatchingProjects")}</div>
                 )}
               </div>
 
@@ -1227,6 +1638,35 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 </svg>
                 <span>{t("sidebar.customPath")}</span>
               </button>
+              {hiddenProjects.size > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen(false);
+                    setManageWorkspacesOpen(true);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    width: "100%",
+                    padding: "8px 10px",
+                    background: "none",
+                    border: "none",
+                    borderTop: "1px solid var(--border)",
+                    color: "var(--accent)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontSize: 11,
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  <span>{t("sidebar.manageWorkspaces")} ({hiddenProjects.size})</span>
+                </button>
+              )}
           </AnimatedDropdown>
         </div>
 
@@ -1898,6 +2338,31 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           )}
         </div>
       )}
+      <WorkspaceManagerModal
+        open={manageWorkspacesOpen}
+        onClose={() => setManageWorkspacesOpen(false)}
+        allSessions={allSessions}
+        selectedCwd={selectedCwd}
+        hiddenProjects={hiddenProjects}
+        pinnedProjects={pinnedProjects}
+        onSelectCwd={(cwd) => setSelectedCwd(cwd)}
+        onTogglePin={(proj) => {
+          setPinnedProjects((prev) => {
+            const next = new Set(prev);
+            if (next.has(proj)) next.delete(proj);
+            else next.add(proj);
+            return next;
+          });
+        }}
+        onRemoveProject={(proj) => {
+          setHiddenProjects((prev) => new Set([...prev, proj]));
+          if (selectedProject === proj) setSelectedCwd(null);
+        }}
+
+        onOpenCustomPath={handleCustomPathClick}
+        onDefaultCwd={handleDefaultCwd}
+        homeDir={homeDir}
+      />
     </div>
   );
 }
