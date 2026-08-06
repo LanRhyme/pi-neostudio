@@ -132,11 +132,17 @@ pre, code {
 }
 
 /* react-markdown output styles */
+:root {
+  --msg-font-size: 14px;
+}
+:root[data-font-size="compact"] { --msg-font-size: 12.5px; }
+:root[data-font-size="comfortable"] { --msg-font-size: 15.5px; }
+
 .markdown-body {
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-  font-size: 14px;
+  font-size: var(--msg-font-size);
   line-height: 1.7;
   color: var(--text);
   word-break: break-word;
