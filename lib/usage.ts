@@ -1,6 +1,6 @@
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
-import { basename, join } from "path";
+import { join } from "path";
 
 // ============================================================================
 // Token usage tracking
@@ -13,7 +13,7 @@ import { basename, join } from "path";
 //   1. Live: AgentSessionWrapper subscribes to `entry_appended` events and
 //      pushes records as messages are persisted (lib/rpc-manager.ts).
 //   2. Backfill: `backfillUsage()` scans session files under
-//      `~/.pi/agent/sessions/*/*.jsonl`, incrementally (per-file mtime).
+//      `~/.pi/agent/sessions/*/*.jsonl`, incrementally (per-file mtime+size).
 //
 // Plugin integration: pi extensions already receive per-call usage through the
 // standard `message_end` event (`message.usage`) — the store below aggregates
@@ -84,7 +84,7 @@ export interface UsageDetailResponse {
 interface UsageState {
   records: Map<string, UsageRecord>;
   loaded: boolean;
-  scannedFiles: Map<string, number>; // sessionFile -> mtimeMs
+  scannedFiles: Map<string, string>; // sessionFile -> "mtimeMs:size"
   lastBackfillAt: number;
   backfillPromise: Promise<number> | null;
   storeRecords: number;
@@ -168,7 +168,12 @@ function toUsageRecord(sessionFile: string, entryId: string, timestamp: string, 
   const totalTokens = num(usage.totalTokens) || input + output + cacheRead + cacheWrite;
   if (totalTokens <= 0 && costOf(usage.cost) <= 0) return null;
 
-  const file = sessionFile || basename(sessionFile) || "(unknown)";
+  // In-memory sessions have no file yet: skip so the record is picked up by
+  // the backfill scan once the session file is persisted. Fabricating an
+  // "(unknown)" key would record the entry twice (live + backfill under the
+  // real path) and double-count it in the totals.
+  if (!sessionFile) return null;
+  const file = sessionFile;
   return {
     id: recordKey(file, entryId),
     sessionFile: file,
@@ -294,22 +299,33 @@ export function recordUsage(record: UsageRecord): boolean {
 
 /**
  * Scan session files for usage data not yet in the store.
- * Incremental: files whose mtime is unchanged since the last scan are skipped.
+ * Incremental: files whose mtime+size are unchanged since the last scan are skipped.
  * Throttled to once per BACKFILL_THROTTLE_MS unless force is set.
  */
 export function backfillUsage(options: { force?: boolean } = {}): Promise<number> {
   const state = getState();
+
+  // Reuse an in-flight scan instead of stacking concurrent ones.
   if (state.backfillPromise) return state.backfillPromise;
 
+  // Throttle non-forced rescans.
   if (!options.force && state.lastBackfillAt && Date.now() - state.lastBackfillAt < BACKFILL_THROTTLE_MS) {
     return Promise.resolve(0);
   }
 
-  state.backfillPromise = (async (): Promise<number> => {
-    ensureLoaded();
-    const dir = sessionsDir();
+  // The scan is fully synchronous (statSync/readFileSync only, no awaits), so
+  // the async body runs to completion — including any `finally` — *before* the
+  // assignment below executes. Clearing the slot inside that `finally` and then
+  // assigning `state.backfillPromise = run` would re-store the already-resolved
+  // promise, making the guard above return the stale promise forever: backfill
+  // would never run again after the first request (the stats then freeze at the
+  // first snapshot). Clear the slot from `.then()` instead: it fires as a
+  // microtask — i.e. after the assignment — and only when we still own the slot.
+  const run = (async (): Promise<number> => {
     let added = 0;
     try {
+      ensureLoaded();
+      const dir = sessionsDir();
       if (!existsSync(dir)) return added;
       const cwdDirs = readdirSync(dir, { withFileTypes: true });
       for (const cwdDir of cwdDirs) {
@@ -324,12 +340,17 @@ export function backfillUsage(options: { force?: boolean } = {}): Promise<number
         for (const file of files) {
           const filePath = join(sessionDirPath, file);
           let mtimeMs: number;
+          let size: number;
           try {
-            mtimeMs = statSync(filePath).mtimeMs;
+            const st = statSync(filePath);
+            mtimeMs = st.mtimeMs;
+            size = st.size;
           } catch {
             continue;
           }
-          if (!options.force && state.scannedFiles.get(filePath) === mtimeMs) continue;
+          // Incremental: skip files whose mtime AND size are unchanged since the
+          // last scan (size guards against in-place rewrites with a kept mtime).
+          if (!options.force && state.scannedFiles.get(filePath) === `${mtimeMs}:${size}`) continue;
           let content: string;
           try {
             content = readFileSync(filePath, "utf8");
@@ -352,19 +373,28 @@ export function backfillUsage(options: { force?: boolean } = {}): Promise<number
             const record = recordFromEntry(filePath, entry);
             if (record && recordUsage(record)) added += 1;
           }
-          state.scannedFiles.set(filePath, mtimeMs);
+          state.scannedFiles.set(filePath, `${mtimeMs}:${size}`);
         }
       }
     } catch (err) {
       console.error("[pi-web] usage backfill failed:", err instanceof Error ? err.message : err);
     } finally {
       state.lastBackfillAt = Date.now();
-      state.backfillPromise = null;
     }
     return added;
   })();
 
-  return state.backfillPromise;
+  state.backfillPromise = run;
+  void run.then(
+    () => {
+      if (state.backfillPromise === run) state.backfillPromise = null;
+    },
+    (err) => {
+      if (state.backfillPromise === run) state.backfillPromise = null;
+      console.error("[pi-web] usage backfill failed:", err instanceof Error ? err.message : err);
+    },
+  );
+  return run;
 }
 
 // ----------------------------------------------------------------------------
