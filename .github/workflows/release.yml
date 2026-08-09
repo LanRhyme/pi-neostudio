@@ -5,8 +5,38 @@ on:
     types: [published]
 
 jobs:
-  build:
+  build-web:
+    name: build web app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Strip dev artifacts
+        run: rm -rf .next/cache .next/dev
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: |
+            .next
+            public
+          retention-days: 3
+
+  package:
     name: ${{ matrix.os }}
+    needs: build-web
     strategy:
       fail-fast: false
       matrix:
@@ -32,11 +62,16 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
-      - name: Build web app
-        run: npm run build
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: .
 
       - name: Package electron app
         run: npx electron-builder ${{ matrix.args }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
