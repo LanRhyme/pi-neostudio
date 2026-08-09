@@ -1,0 +1,31 @@
+name: macos-release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Package macOS dmg
+        run: npx electron-builder --mac --x64 --arm64
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-electron/*.dmg

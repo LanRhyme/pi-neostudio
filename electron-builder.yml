@@ -1,0 +1,40 @@
+appId: com.lanrhyme.pi-neostudio
+productName: Pi NeoStudio
+copyright: Copyright © 2026 LanRhyme
+
+directories:
+  output: dist-electron
+  buildResources: build
+
+files:
+  - electron/**
+  - .next/**
+  - public/**
+  - next.config.ts
+  - package.json
+
+asar: false
+npmRebuild: false
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+  maintainer: LanRhyme
+  synopsis: Web UI for the pi coding agent
+  syncDesktopName: true
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
