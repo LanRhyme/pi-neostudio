@@ -3,6 +3,7 @@
 // 开发模式: 优先复用已有的 dev server (30141)
 const { app, BrowserWindow, nativeTheme } = require("electron");
 const { spawn } = require("child_process");
+const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
@@ -30,15 +31,34 @@ function isPortAlive(port, timeoutMs = 1500) {
 	});
 }
 
+// 打包产物（electron-builder）不含 node_modules/.bin 符号链接，需回退到 next 实际 bin
+function resolveNextBin() {
+	const pkgDir = path.join(__dirname, "..");
+	const candidates = [
+		path.join(pkgDir, "node_modules", "next", "dist", "bin", "next"),
+		path.join(pkgDir, "node_modules", ".bin", "next"),
+	];
+	return candidates.find((c) => {
+		try {
+			return fs.existsSync(c);
+		} catch {
+			return false;
+		}
+	}) || candidates[0];
+}
+
 async function startNextServer() {
-	const nextBin = path.join(__dirname, "..", "node_modules", ".bin", "next");
+	const pkgDir = path.join(__dirname, "..");
+	const nextBin = resolveNextBin();
+	// 用 Electron 内嵌 Node 执行 next CLI，避免依赖 shell 与系统 node（打包产物同样可用）
 	nextProcess = spawn(
-		nextBin,
-		["start", "-p", String(PROD_PORT), "-H", "127.0.0.1"],
+		process.execPath,
+		[nextBin, "start", "-p", String(PROD_PORT), "-H", "127.0.0.1"],
 		{
-			cwd: path.join(__dirname, ".."),
+			cwd: pkgDir,
 			stdio: "ignore",
 			detached: false,
+			env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
 		},
 	);
 	// 等 server 就绪（最多 60s）
