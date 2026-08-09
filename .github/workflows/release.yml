@@ -46,13 +46,17 @@ jobs:
         include:
           - os: ubuntu-latest
             args: --linux
-            files: dist-electron/*.AppImage dist-electron/*.deb
+            files: |
+              dist-electron/*.AppImage
+              dist-electron/*.deb
           - os: windows-latest
             args: --win
-            files: dist-electron/*.exe
+            files: |
+              dist-electron/*.exe
           - os: macos-latest
             args: --mac --x64 --arm64
-            files: dist-electron/*.dmg
+            files: |
+              dist-electron/*.dmg
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +76,7 @@ jobs:
           path: .
 
       - name: Package electron app
-        run: npx electron-builder ${{ matrix.args }}
+        run: npx electron-builder ${{ matrix.args }} --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
