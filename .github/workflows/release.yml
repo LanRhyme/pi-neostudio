@@ -1,0 +1,44 @@
+name: release-builds
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            args: --linux
+            files: dist-electron/*.AppImage dist-electron/*.deb
+          - os: windows-latest
+            args: --win
+            files: dist-electron/*.exe
+          - os: macos-latest
+            args: --mac --x64 --arm64
+            files: dist-electron/*.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Package electron app
+        run: npx electron-builder ${{ matrix.args }}
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.files }}
