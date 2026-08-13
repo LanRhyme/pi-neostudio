@@ -1641,6 +1641,8 @@ function PairedResult({
 
 function CompactionMessageView({ message }: { message: CustomMessage }) {
 	const { t } = useI18n();
+	// 压缩摘要可能非常大（数百 KB），默认收起，用户点击后再展开
+	const [expanded, setExpanded] = useState(false);
 	const summary = getMessageText(message.content);
 	const parsedSummary = useMemo(
 		() => parseCompactionSummary(summary),
@@ -1705,7 +1707,7 @@ function CompactionMessageView({ message }: { message: CustomMessage }) {
 					<div
 						style={{
 							marginTop: 3,
-							marginBottom: 10,
+							marginBottom: 8,
 							color: "var(--text)",
 							fontSize: 14,
 							lineHeight: 1.5,
@@ -1713,19 +1715,79 @@ function CompactionMessageView({ message }: { message: CustomMessage }) {
 					>
 						{t("i18n.compactionDescription")}
 					</div>
+
 					{parsedSummary.body ? (
-						<MarkdownBody className="markdown-compaction-message">
-							{parsedSummary.body}
-						</MarkdownBody>
+						<>
+							<button
+								type="button"
+								aria-expanded={expanded}
+								onClick={() => setExpanded((v) => !v)}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 6,
+									padding: "4px 0",
+									border: "none",
+									background: "transparent",
+									color: "var(--accent)",
+									cursor: "pointer",
+									fontSize: 12,
+									fontWeight: 500,
+									textAlign: "left",
+								}}
+							>
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 12 12"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="1.6"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									style={{
+										flexShrink: 0,
+										transform: expanded ? "rotate(90deg)" : "none",
+										transition: "transform 0.15s",
+									}}
+								>
+									<polyline points="4 2.5 7.5 6 4 9.5" />
+								</svg>
+								{expanded
+									? t("i18n.hideSummary")
+									: t("i18n.showSummary")}
+							</button>
+							{expanded ? (
+								<div style={{ marginTop: 8 }}>
+									<MarkdownBody className="markdown-compaction-message">
+										{parsedSummary.body}
+									</MarkdownBody>
+									<CompactionFileMetadata
+										readFiles={parsedSummary.readFiles}
+										modifiedFiles={parsedSummary.modifiedFiles}
+									/>
+								</div>
+							) : (
+								<div
+									style={{
+										marginTop: 6,
+										color: "var(--text-dim)",
+										fontSize: 12,
+										lineHeight: 1.5,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+								>
+									{previewText(parsedSummary.body)}
+								</div>
+							)}
+						</>
 					) : (
 						<span style={{ color: "var(--text-dim)", fontSize: 12 }}>
 							{t("i18n.noSummary")}
 						</span>
 					)}
-					<CompactionFileMetadata
-						readFiles={parsedSummary.readFiles}
-						modifiedFiles={parsedSummary.modifiedFiles}
-					/>
 				</div>
 			</div>
 		</div>

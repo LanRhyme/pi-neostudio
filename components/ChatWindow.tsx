@@ -1196,8 +1196,14 @@ export const ChatWindow = memo(function ChatWindow({
 											}
 											idx = endIdx;
 										}
+										// toolResult 等不可见消息在 rendered 中是 null 占位，
+										// 先剔除再计算可见窗口，否则"最近 50 条"实际只有约一半
+										// 可见消息，向上滚动加载历史也会慢一倍
+										const renderedItems = rendered.filter(
+											(node): node is ReactNode => node !== null,
+										);
 										const { startIndex, hasMore } = getVisibleRenderWindow(
-											rendered.length,
+											renderedItems.length,
 											visibleCount,
 										);
 										return (
@@ -1210,7 +1216,7 @@ export const ChatWindow = memo(function ChatWindow({
 														{t("chat.loadEarlier", { count: startIndex })}
 													</div>
 												)}
-												{rendered.slice(startIndex)}
+												{renderedItems.slice(startIndex)}
 											</>
 										);
 									})()}

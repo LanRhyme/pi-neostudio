@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, useCallback, useRef, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { SessionInfo } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
@@ -971,6 +971,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   }, []);
 
   const restoredRef = useRef(false);
+  // 用户显式切到"所有会话"模式时置位，阻止自动选中最近项目覆盖该模式
+  const allSessionsModeRef = useRef(false);
 
   /** Resolve the project root for a cwd from the freshest data available */
   const projectRootFor = useCallback((cwd: string | null): string | null => {
@@ -1045,6 +1047,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     if (allSessions.length === 0 || skipInitialProjectSelection) return;
 
     if (selectedCwd === null) {
+      // 用户显式选择了"所有会话"模式，不再自动选中最近项目
+      if (allSessionsModeRef.current) return;
       // If restoring a session, set cwd to match that session
       if (initialSessionId && !restoredRef.current) {
         restoredRef.current = true;
@@ -1258,6 +1262,27 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
   // Build parent-child tree within the filtered set
   const sessionTree = buildSessionTree(filteredSessions);
+
+  // All-sessions mode（未选择项目时）按项目分组，旧项目的会话不再被埋没
+  const groupedSessionTrees = useMemo(() => {
+    if (selectedProject) return [];
+    const byProject = new Map<string, SessionTreeNode[]>();
+    for (const node of sessionTree) {
+      const root = node.session.projectRoot ?? node.session.cwd;
+      if (!root) continue;
+      const list = byProject.get(root);
+      if (list) list.push(node);
+      else byProject.set(root, [node]);
+    }
+    return [...byProject.entries()].sort((a, b) => {
+      const aPinned = pinnedProjects.has(a[0]) ? 0 : 1;
+      const bPinned = pinnedProjects.has(b[0]) ? 0 : 1;
+      if (aPinned !== bPinned) return aPinned - bPinned;
+      const aLatest = Math.max(...a[1].map((n) => Date.parse(n.session.modified)));
+      const bLatest = Math.max(...b[1].map((n) => Date.parse(n.session.modified)));
+      return bLatest - aLatest;
+    });
+  }, [sessionTree, selectedProject, pinnedProjects]);
 
   const effectiveCwd = selectedCwdProp || selectedCwd;
   useEffect(() => {
@@ -1492,6 +1517,42 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 </div>
               )}
               <div style={{ maxHeight: "min(50vh, 380px)", overflowY: "auto" }}>
+                {/* 所有会话：跨项目浏览全部历史会话 */}
+                <div
+                  onClick={() => {
+                    allSessionsModeRef.current = true;
+                    setSelectedCwd(null);
+                    setProjectFilter("");
+                    setCustomPathOpen(false);
+                    setCustomPathValue("");
+                    setCustomPathError(null);
+                    setDropdownOpen(false);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    width: "100%",
+                    padding: "7px 10px",
+                    background: !selectedProject ? "var(--bg-selected)" : "var(--bg)",
+                    borderBottom: "1px solid var(--border)",
+                    color: !selectedProject ? "var(--text)" : "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: 11,
+                    fontFamily: "var(--font-mono)",
+                    boxSizing: "border-box",
+                  }}
+                  title={t("sidebar.allSessions")}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="9" y1="4" x2="9" y2="9" />
+                  </svg>
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {t("sidebar.allSessions")}
+                  </span>
+                </div>
                 {visibleProjects.map((project) => {
                   const isPinned = pinnedProjects.has(project);
                   const isSelected = project === selectedProject;
@@ -1499,6 +1560,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     <div
                       key={project}
                       onClick={() => {
+                        allSessionsModeRef.current = false;
                         setSelectedCwd(project);
                         setProjectFilter("");
                         setCustomPathOpen(false);
@@ -2195,27 +2257,90 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 {t("sidebar.noSessions")}
               </div>
             )}
-            {sessionTree.map((node, idx) => (
-              <div
-                key={node.session.id}
-                className="list-item-in"
-                style={{ animationDelay: `${Math.min(idx * 30, 420)}ms` }}
-              >
-              <SessionTreeItem
-                node={node}
-                selectedSessionId={selectedSessionId}
-                runningSessionIds={runningSessionIds}
-                unreadSessionIds={unreadSessionIds}
-                onSelectSession={handleSelectSessionFromList}
-                onRenamed={loadSessions}
-                onSessionDeleted={(id) => {
-                  onSessionDeleted?.(id);
-                  loadSessions();
-                }}
-                depth={0}
-              />
-              </div>
-            ))}
+            {!selectedProject && groupedSessionTrees.length > 0
+              ? groupedSessionTrees.map(([project, nodes], projectIdx) => (
+                  <Fragment key={project}>
+                    <div
+                      className="list-item-in"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "7px 12px 3px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        fontFamily: "var(--font-mono)",
+                        color: "var(--text-muted)",
+                        letterSpacing: "0.05em",
+                        animationDelay: `${Math.min(projectIdx * 30, 420)}ms`,
+                      }}
+                    >
+                      <span
+                        style={{
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {displayCwd(project, homeDir)}
+                      </span>
+                      <span
+                        style={{
+                          color: "var(--text-dim)",
+                          fontWeight: 400,
+                          letterSpacing: 0,
+                        }}
+                      >
+                        {nodes.length}
+                      </span>
+                    </div>
+                    {nodes.map((node, idx) => (
+                      <div
+                        key={node.session.id}
+                        className="list-item-in"
+                        style={{
+                          animationDelay: `${Math.min((projectIdx + idx) * 30, 420)}ms`,
+                        }}
+                      >
+                        <SessionTreeItem
+                          node={node}
+                          selectedSessionId={selectedSessionId}
+                          runningSessionIds={runningSessionIds}
+                          unreadSessionIds={unreadSessionIds}
+                          onSelectSession={handleSelectSessionFromList}
+                          onRenamed={loadSessions}
+                          onSessionDeleted={(id) => {
+                            onSessionDeleted?.(id);
+                            loadSessions();
+                          }}
+                          depth={0}
+                        />
+                      </div>
+                    ))}
+                  </Fragment>
+                ))
+              : sessionTree.map((node, idx) => (
+                  <div
+                    key={node.session.id}
+                    className="list-item-in"
+                    style={{ animationDelay: `${Math.min(idx * 30, 420)}ms` }}
+                  >
+                    <SessionTreeItem
+                      node={node}
+                      selectedSessionId={selectedSessionId}
+                      runningSessionIds={runningSessionIds}
+                      unreadSessionIds={unreadSessionIds}
+                      onSelectSession={handleSelectSessionFromList}
+                      onRenamed={loadSessions}
+                      onSessionDeleted={(id) => {
+                        onSessionDeleted?.(id);
+                        loadSessions();
+                      }}
+                      depth={0}
+                    />
+                  </div>
+                ))}
           </>
         )}
       </div>

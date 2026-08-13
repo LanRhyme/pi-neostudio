@@ -389,6 +389,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // 流式 rAF 节流：合并一帧内的多次 message_update，避免每 delta 全量重渲染
   const streamFrameRef = useRef<number | null>(null);
   const streamPendingMsgRef = useRef<Partial<AgentMessage> | null>(null);
+  // 流式段世代号：message_start/message_end/agent_start 等边界处递增。
+  // rAF 回调在调度时捕获世代号，若回调执行时世代已变则丢弃该次合并更新，
+  // 防止 message_end 之后残留的陈旧气泡把已完成的消息在面板里渲染两次
+  const streamEpochRef = useRef(0);
   const sdkAgentActiveRef = useRef(false);
   const rpcPromptPendingRef = useRef(false);
   const notifiedPromptRunIdRef = useRef(-1);
@@ -833,6 +837,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       cancelAnimationFrame(streamFrameRef.current);
       streamFrameRef.current = null;
     }
+    streamEpochRef.current += 1;
     setAgentRunning(false);
     setAgentPhase(null);
     setRetryInfo(null);
@@ -1052,6 +1057,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         agentRunningRef.current = true;
         setAgentRunning(true);
         setAgentPhase({ kind: "waiting_model" });
+        streamEpochRef.current += 1;
         dispatch({ type: "start" });
         break;
       case "agent_end":
@@ -1061,6 +1067,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (!agentRunningRef.current) break;
         setAgentPhase(null);
         setRetryInfo(null);
+        streamEpochRef.current += 1;
         dispatch({ type: "end" });
         if (sessionIdRef.current) {
           loadSession(sessionIdRef.current);
@@ -1132,11 +1139,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (msg?.role === "user") {
           break;
         }
+        if (event.type === "message_start") {
+          // 新消息段开始：上一段若还有未执行的 rAF 合并更新，直接作废
+          streamEpochRef.current += 1;
+        }
         if (msg) {
+          const epoch = streamEpochRef.current;
           streamPendingMsgRef.current = normalizeToolCalls(msg as AgentMessage);
           if (streamFrameRef.current === null) {
             streamFrameRef.current = requestAnimationFrame(() => {
               streamFrameRef.current = null;
+              // 段已结束（message_end/agent_end/…已推进世代号），丢弃陈旧更新，
+              // 防止已完成的消息在列表中渲染后又以流式气泡形式重复出现
+              if (streamEpochRef.current !== epoch) return;
               const pending = streamPendingMsgRef.current;
               if (pending) dispatch({ type: "update", message: pending });
             });
@@ -1172,6 +1187,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         } else if (completed) {
           setMessages((prev) => [...prev, normalizeToolCalls(completed)]);
         }
+        // 段结束：作废尚未执行的 rAF 合并更新，避免幽灵气泡重复渲染
+        streamEpochRef.current += 1;
         dispatch({ type: "reset" });
         setAgentPhase({ kind: "waiting_model" });
         break;
@@ -1265,6 +1282,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunningRef.current = true;
     setAgentRunning(true);
     setAgentPhase(isSlashCommandPrompt ? { kind: "running_command" } : { kind: "waiting_model" });
+    streamEpochRef.current += 1;
     dispatch({ type: "start" });
     pendingScrollToUserRef.current = true;
     completionScrollAllowedRef.current = true;
@@ -1340,6 +1358,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       optimisticUserMessageKeyRef.current = null;
       setAgentRunning(false);
       setAgentPhase(null);
+      streamEpochRef.current += 1;
       dispatch({ type: "end" });
     }
   }, [isNew, newSessionCwd, newSessionModel, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, cancelEventStreamGrace, closeEvents, opts.chatInputRef]);
@@ -1736,6 +1755,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             agentRunningRef.current = true;
             setAgentRunning(true);
             setAgentPhase(agentState.state.isStreaming ? { kind: "waiting_model" } : { kind: "running_command" });
+            streamEpochRef.current += 1;
             dispatch({ type: "start" });
             void connectEvents(session.id);
             if (!agentState.state.isStreaming && agentState.state.isPromptRunning) {
