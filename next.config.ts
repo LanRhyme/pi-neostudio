@@ -13,6 +13,7 @@ try {
 } catch { /* package not found, use default */ }
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: __dirname,
   serverExternalPackages: [
     "undici",
     "@earendil-works/pi-coding-agent",

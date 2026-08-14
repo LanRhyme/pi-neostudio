@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { claimExtensionAttentionNotification, shouldShowBrowserNotification, showBrowserNotification } from "@/lib/browser-notifications";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
 import { FileViewer } from "./FileViewer";
@@ -40,7 +41,7 @@ import {
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
 } from "@/lib/panel-layout";
-import type { SessionInfo, SessionTreeNode } from "@/lib/types";
+import type { BlockingExtensionUiRequest, SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ProjectTrustStatus } from "@/lib/api-types";
 import type { ChatInputHandle } from "./ChatInput";
 import type { SessionStatsInfo } from "@/lib/pi-types";
@@ -198,6 +199,7 @@ export function AppShell() {
   const [sessionStats, setSessionStats] = useState<SessionStatsInfo | null>(null);
   const [autoNameStatus, setAutoNameStatus] = useState<AutoNameStatus>({ kind: "idle" });
   const autoNameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notifiedAttentionRequestIdsRef = useRef(new Set<string>());
   const activeSessionIdRef = useRef<string | null>(selectedSession?.id ?? null);
   activeSessionIdRef.current = selectedSession?.id ?? null;
   const handleSessionStatsChange = useCallback((stats: SessionStatsInfo | null) => {
@@ -465,10 +467,66 @@ export function AppShell() {
     router.replace(`?session=${encodeURIComponent(session.id)}`, { scroll: false });
   }, [router, hydrateSelectedSession]);
 
+  const deliverSessionNotification = useCallback(({
+    targetSession,
+    title,
+    body,
+    tag,
+  }: {
+    targetSession: SessionInfo | null;
+    title: string;
+    body: string;
+    tag?: string;
+  }) => {
+    if (!("Notification" in window)) return;
+
+    const fire = () => {
+      const sessionUrl = targetSession ? `/?session=${encodeURIComponent(targetSession.id)}` : "/";
+      void showBrowserNotification({
+        title,
+        body,
+        sessionUrl,
+        tag,
+        onClick: () => {
+          window.focus();
+          if (targetSession) handleSelectSession(targetSession);
+        },
+      });
+    };
+
+    if (Notification.permission === "granted") {
+      fire();
+    } else if (Notification.permission === "default") {
+      void Notification.requestPermission().then((p) => { if (p === "granted") fire(); });
+    }
+  }, [handleSelectSession]);
+
   const handleAgentEnd = useCallback(() => {
     setRefreshKey((k) => k + 1);
     setExplorerRefreshKey((k) => k + 1);
-  }, []);
+
+    if (!shouldShowBrowserNotification()) return;
+    const targetSession = selectedSession;
+    deliverSessionNotification({
+      targetSession,
+      title: targetSession?.name ?? translate("i18n.sessionComplete"),
+      body: translate("i18n.taskFinished"),
+    });
+  }, [deliverSessionNotification, selectedSession, translate]);
+
+  const handleAttentionNeeded = useCallback((request: BlockingExtensionUiRequest) => {
+    if (!shouldShowBrowserNotification()) return;
+    if (!claimExtensionAttentionNotification(request, notifiedAttentionRequestIdsRef.current)) return;
+
+    deliverSessionNotification({
+      targetSession: selectedSession,
+      title: translate("i18n.attentionNeeded"),
+      body: request.method === "custom"
+        ? translate("i18n.extensionInputNeeded")
+        : request.title,
+      tag: `pi-extension-ui:${request.id}`,
+    });
+  }, [deliverSessionNotification, selectedSession, translate]);
 
   const handleAutoName = useCallback(async () => {
     const sessionId = selectedSession?.id;
@@ -1651,6 +1709,7 @@ export function AppShell() {
               session={selectedSession}
               newSessionCwd={effectiveNewSessionCwd}
               onAgentEnd={handleAgentEnd}
+              onAttentionNeeded={handleAttentionNeeded}
               onSessionCreated={handleSessionCreated}
               onSessionForked={handleSessionForked}
               modelsRefreshKey={modelsRefreshKey}

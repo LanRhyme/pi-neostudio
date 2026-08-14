@@ -917,6 +917,7 @@ interface ChatInputUiActions {
 	onFollowUp: Props["onFollowUp"];
 	onAbort: Props["onAbort"];
 	sendQueued: (mode: "steer" | "followup") => void;
+	isMobile: boolean;
 	handleSend: () => void;
 }
 
@@ -941,6 +942,7 @@ const ChatInputKeyboard = Extension.create({
 				Date.now() - actions.lastCompositionEndAt() <
 				COMPOSITION_END_ENTER_GRACE_MS;
 			if (composing || recentlyComposed) return true;
+			if (actions.isMobile) return false; // 移动端 Enter 换行，Ctrl/Cmd+Enter 发送
 			if (
 				actions.historyMenuOpen &&
 				actions.inputHistory[actions.historyActiveIndex]
@@ -1080,6 +1082,7 @@ const ChatInputKeyboard = Extension.create({
 		};
 		return {
 			Enter: onEnter,
+			"Mod-Enter": onEnter,
 			"Shift-Enter": () => false,
 			ArrowUp: () => onArrow("up"),
 			ArrowDown: () => onArrow("down"),
@@ -1944,6 +1947,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
 	// (ChatInputKeyboard, priority 300) that forwards to these latest actions.
 	chatInputUiRef.current = {
 		editor: () => editorRef.current,
+		isMobile,
 		isComposing: () => isComposingRef.current,
 		lastCompositionEndAt: () => lastCompositionEndAtRef.current,
 		value: () => valueRef.current,

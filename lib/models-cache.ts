@@ -46,6 +46,13 @@ export function withModelRuntimeError(data: ModelsData, modelError: string | und
   return modelError ? { ...data, modelError } : data;
 }
 
+// 不要把捕获的错误插入提示文本：SDK 错误可能包含路径与 provider 细节
+const SAFE_MODEL_LOAD_FAILURE_MESSAGE = "Model list is temporarily unavailable. Check your configuration and try again.";
+export function withSafeModelLoadFailure(data: ModelsData): ModelsData {
+  return { ...data, modelError: SAFE_MODEL_LOAD_FAILURE_MESSAGE };
+}
+
+
 export function loadModelsWithCache(cwd: string, loader: () => Promise<ModelsData>): Promise<ModelsData> {
   const state = getModelsCacheState();
   const cached = state.entries.get(cwd);

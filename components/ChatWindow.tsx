@@ -14,6 +14,7 @@ import type {
 	AgentMessage,
 	AssistantContentBlock,
 	AssistantMessage,
+	BlockingExtensionUiRequest,
 	BashExecutionMessage,
 	CustomMessage,
 	ExtensionUiRequest,
@@ -57,6 +58,7 @@ interface Props {
 	session: SessionInfo | null;
 	newSessionCwd: string | null;
 	onAgentEnd?: () => void;
+	onAttentionNeeded?: (request: BlockingExtensionUiRequest) => void;
 	onSessionCreated?: (session: SessionInfo) => void;
 	onSessionForked?: (newSessionId: string) => void;
 	modelsRefreshKey?: number;
@@ -273,6 +275,7 @@ export const ChatWindow = memo(function ChatWindow({
 	session,
 	newSessionCwd,
 	onAgentEnd,
+	onAttentionNeeded,
 	onSessionCreated,
 	onSessionForked,
 	modelsRefreshKey,
@@ -413,6 +416,7 @@ export const ChatWindow = memo(function ChatWindow({
 		session,
 		newSessionCwd,
 		onAgentEnd: wrappedOnAgentEnd,
+		onAttentionNeeded,
 		onSessionCreated,
 		onSessionForked,
 		modelsRefreshKey,

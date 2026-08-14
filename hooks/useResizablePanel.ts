@@ -73,6 +73,8 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
   const panelRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const restoredRef = useRef(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [width, setWidth] = useState(defaultWidth);
   const [isResizing, setIsResizing] = useState(false);
 
@@ -264,7 +266,7 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     separatorProps: {
       "aria-label": ariaLabel,
       "aria-orientation": "vertical" as const,
-      "aria-valuemax": effectiveMaxWidth(),
+      "aria-valuemax": mounted ? effectiveMaxWidth() : maxWidth,
       "aria-valuemin": minWidth,
       "aria-valuenow": width,
       "aria-valuetext": `${width} px`,
