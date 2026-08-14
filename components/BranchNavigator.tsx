@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import type { SessionEntry, SessionTreeNode } from "@/lib/types";
+import type { AssistantMessage, SessionEntry, SessionTreeNode } from "@/lib/types";
+import { splitFinalAssistantBlocks } from "@/lib/message-display";
 import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
@@ -46,7 +47,9 @@ function buildActivePath(nodes: SessionTreeNode[], targetId: string | null): Set
 function compress(node: SessionTreeNode): { node: SessionTreeNode; skipped: number } {
   let current = node;
   let skipped = current.compressedEntryIds?.length ?? 0;
-  while (current.children.length === 1) {
+  // 用户消息是对话导航点：即使整条会话线性无分支，也在每个用户消息处停下，
+  // 让分支树能逐段回溯到早期对话
+  while (current.children.length === 1 && !isUserMessageNode(current)) {
     current = current.children[0];
     skipped += 1 + (current.compressedEntryIds?.length ?? 0);
   }
@@ -55,31 +58,39 @@ function compress(node: SessionTreeNode): { node: SessionTreeNode; skipped: numb
 
 function getLabel(entry: SessionEntry): string {
   if (entry.type === "message" && "message" in entry) {
-    const msg = entry.message as { role: string; content: unknown };
-    const content = msg.content;
+    const msg = entry.message as { role: string; content: string | Array<{ type: string; text?: string }> };
     let text = "";
-    if (typeof content === "string") {
-      text = content;
-    } else if (Array.isArray(content)) {
-      text = content
-        .filter((b): b is { type: "text"; text: string } => b.type === "text")
-        .map((b) => b.text)
-        .join(" ");
+    if (typeof msg.content === "string") {
+      text = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      if (msg.role === "assistant") {
+        // 优先取最终回答文本（跳过思考块与工具调用过程）
+        const { answerBlocks } = splitFinalAssistantBlocks(entry.message as AssistantMessage);
+        text = answerBlocks
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join(" ");
+      }
+      if (!text.trim()) {
+        text = msg.content
+          .filter((b) => b.type === "text" && typeof b.text === "string")
+          .map((b) => b.text as string)
+          .join(" ");
+      }
     }
+    text = text.trim();
     if (text.length > 40) text = text.slice(0, 40) + "…";
     if (text) return text;
     if (msg.role === "assistant") return "[assistant]";
+    if (msg.role === "user") return "[user]";
   }
   return entry.type;
 }
 
-// Does the tree have any branching at all?
-function hasBranch(nodes: SessionTreeNode[]): boolean {
-  for (const node of nodes) {
-    if (node.children.length > 1) return true;
-    if (hasBranch(node.children)) return true;
-  }
-  return false;
+function isUserMessageNode(node: SessionTreeNode): boolean {
+  return node.entry.type === "message" && "message" in node.entry
+    ? (node.entry.message as { role?: string }).role === "user"
+    : false;
 }
 
 interface TreeNodeProps {
@@ -248,16 +259,12 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
     onLeafChange(id);
   }, [onLeafChange]);
 
-  const noBranchReason = !hasSession
-    ? t("i18n.noActiveSession")
-    : !hasBranch(tree)
-      ? t("i18n.noBranches")
-      : null;
+  const noSessionReason = !hasSession ? t("i18n.noActiveSession") : null;
 
-  // Find first meaningful node (skip pure linear prefix)
+  // 从根部压缩到第一个导航点（用户消息或分支点），线性会话也能逐段回溯
   const compressed = tree.length > 0 ? compress(tree[0]) : null;
   const firstNode = compressed?.node ?? null;
-  const hasContent = !noBranchReason && firstNode && firstNode.children.length > 1;
+  const hasContent = !noSessionReason && firstNode !== null;
 
   const branchIcon = (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: hasContent ? "var(--accent)" : "var(--text-dim)", flexShrink: 0 }}>
@@ -331,21 +338,18 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
             }}>
             {hasContent && firstNode ? (
               <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
-                {firstNode.children.map((child, idx) => (
-                  <TreeNodeView
-                    key={child.entry.id}
-                    node={child}
-                    activePathIds={activePathIds}
-                    depth={0}
-                    isLast={idx === firstNode.children.length - 1}
-                    parentLines={[]}
-                    onSelect={handleSelect}
-                  />
-                ))}
+                <TreeNodeView
+                  node={firstNode}
+                  activePathIds={activePathIds}
+                  depth={0}
+                  isLast
+                  parentLines={[]}
+                  onSelect={handleSelect}
+                />
               </div>
             ) : (
               <div style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-                {noBranchReason}
+                {noSessionReason ?? t("i18n.noBranches")}
               </div>
             )}
           </div>
@@ -394,21 +398,18 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
         }}>
           {hasContent && firstNode ? (
             <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
-              {firstNode.children.map((child, idx) => (
-                <TreeNodeView
-                  key={child.entry.id}
-                  node={child}
-                  activePathIds={activePathIds}
-                  depth={0}
-                  isLast={idx === firstNode.children.length - 1}
-                  parentLines={[]}
-                  onSelect={handleSelect}
-                />
-              ))}
+              <TreeNodeView
+                node={firstNode}
+                activePathIds={activePathIds}
+                depth={0}
+                isLast
+                parentLines={[]}
+                onSelect={handleSelect}
+              />
             </div>
           ) : (
             <div style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-              {noBranchReason ?? t("i18n.noBranches")}
+              {noSessionReason ?? t("i18n.noBranches")}
             </div>
           )}
         </div>

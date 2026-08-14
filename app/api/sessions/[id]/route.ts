@@ -22,6 +22,15 @@ const MAX_PROJECTED_TREE_DEPTH = 200;
  * without recursive traversal. Contracted entry IDs are attached to the next
  * visible node so the UI can still recognize an active leaf inside the chain.
  */
+/**
+ * 用户消息是天然的对话导航点：即使整条会话是线性的（无真正分支），
+ * 也把每个用户消息保留为可见节点，让前端分支树能回溯到早期对话。
+ */
+function isUserMessageEntry(node: { entry: { id: string } }): boolean {
+  const entry = node.entry as { type?: string; message?: { role?: string } };
+  return entry.type === "message" && entry.message?.role === "user";
+}
+
 function projectTreeForResponse<T extends { entry: { id: string }; children: T[]; compressedEntryIds?: string[] }>(
   nodes: T[]
 ): T[] {
@@ -37,7 +46,8 @@ function projectTreeForResponse<T extends { entry: { id: string }; children: T[]
 
     if (
       roots.has(node) ||
-      node.children.length !== 1
+      node.children.length !== 1 ||
+      isUserMessageEntry(node)
     ) {
       keep.add(node);
     }
