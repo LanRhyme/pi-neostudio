@@ -344,6 +344,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [entryIds, setEntryIds] = useState<string[]>([]);
+
+  // 压缩前的更早历史：pi 压缩后上下文丢弃 firstKeptEntryId 之前的条目，
+  // 但这些原始条目仍完整保留在 .jsonl 文件中。这里按页回溯加载并合并显示。
+  const [earlierHasMore, setEarlierHasMore] = useState(false);
+  const [earlierLoading, setEarlierLoading] = useState(false);
+  const earlierMessagesRef = useRef<AgentMessage[]>([]);
+  const earlierEntryIdsRef = useRef<string[]>([]);
+  const earlierBeforeRef = useRef<string | null>(null);
+  const earlierBaseEntryIdRef = useRef<string | null>(null);
+  const earlierLoadingRef = useRef(false);
+  const contextMessagesRef = useRef<AgentMessage[]>([]);
+  const contextEntryIdsRef = useRef<string[]>([]);
   const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
   const [agentRunning, setAgentRunning] = useState(false);
   const [bashRunning, setBashRunning] = useState(false);
@@ -459,6 +471,71 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } satisfies SessionStatsInfo;
   }, [messages, sessionStatsOverride, contextUsage, data?.filePath, session?.id, session?.name]);
 
+  /** 从上下文首条消息推导可回溯的起点（压缩条目的 firstKeptEntryId） */
+  const deriveEarlierBefore = (msgs: AgentMessage[]): string | null => {
+    const first = msgs[0];
+    if (!first || first.role !== "custom" || first.customType !== "compaction") return null;
+    const details = first.details as { firstKeptEntryId?: string } | undefined;
+    return details?.firstKeptEntryId ?? null;
+  };
+
+  /** 将新上下文与已加载的更早历史合并（首条 entry id 变化 = 换了会话/叶子，需重置） */
+  const applyContextMessages = useCallback((newMessages: AgentMessage[], newEntryIds: string[]) => {
+    const baseId = newEntryIds[0] ?? null;
+    if (baseId !== earlierBaseEntryIdRef.current) {
+      earlierBaseEntryIdRef.current = baseId;
+      earlierMessagesRef.current = [];
+      earlierEntryIdsRef.current = [];
+      const before = deriveEarlierBefore(newMessages);
+      earlierBeforeRef.current = before;
+      setEarlierHasMore(before !== null);
+    }
+    contextMessagesRef.current = newMessages;
+    contextEntryIdsRef.current = newEntryIds;
+    const earlier = earlierMessagesRef.current;
+    if (earlier.length > 0) {
+      setMessages([...earlier, ...newMessages]);
+      setEntryIds([...earlierEntryIdsRef.current, ...newEntryIds]);
+    } else {
+      setMessages(newMessages);
+      setEntryIds(newEntryIds);
+    }
+  }, []);
+
+  const loadEarlierHistory = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    const before = earlierBeforeRef.current;
+    if (!sid || !before || earlierLoadingRef.current) return;
+    earlierLoadingRef.current = true;
+    setEarlierLoading(true);
+    try {
+      const params = new URLSearchParams({ before, limit: "50", deferThinking: "1", deferMedia: "1" });
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/earlier?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json() as {
+        messages: AgentMessage[];
+        entryIds: string[];
+        hasMore: boolean;
+        nextBefore: string | null;
+      };
+      if (sessionIdRef.current !== sid) return;
+      const merged = [...d.messages, ...earlierMessagesRef.current];
+      const mergedIds = [...d.entryIds, ...earlierEntryIdsRef.current];
+      earlierMessagesRef.current = merged;
+      earlierEntryIdsRef.current = mergedIds;
+      setEarlierHasMore(d.hasMore);
+      earlierBeforeRef.current = d.nextBefore;
+      // 合并进主消息列表（新加载的更早消息插在 compaction 之前）
+      setMessages([...merged, ...contextMessagesRef.current]);
+      setEntryIds([...mergedIds, ...contextEntryIdsRef.current]);
+    } catch (e) {
+      console.error("Failed to load earlier history:", e);
+    } finally {
+      earlierLoadingRef.current = false;
+      setEarlierLoading(false);
+    }
+  }, []);
+
   const loadSession = useCallback(async (sid: string, showLoading = false, includeState = false) => {
     let messagesLoaded = false;
     try {
@@ -479,8 +556,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (sessionIdRef.current !== sid) return null;
       setData(d);
       setActiveLeafId(d.leafId);
-      setMessages(d.context.messages);
-      setEntryIds(d.context.entryIds ?? []);
+      applyContextMessages(d.context.messages, d.context.entryIds ?? []);
       setCurrentModelOverride(null);
       setError(null);
       if (d.context.thinkingLevel && d.context.thinkingLevel !== "off") {
@@ -519,7 +595,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally {
       if (showLoading && !messagesLoaded) setLoading(false);
     }
-  }, []);
+  }, [applyContextMessages]);
 
   const loadContext = useCallback(async (sid: string, leafId: string | null) => {
     try {
@@ -529,12 +605,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[] } };
-      setMessages(d.context.messages);
-      setEntryIds(d.context.entryIds ?? []);
+      applyContextMessages(d.context.messages, d.context.entryIds ?? []);
     } catch (e) {
       console.error("Failed to load context:", e);
     }
-  }, []);
+  }, [applyContextMessages]);
 
   const loadTools = useCallback(async (sid: string) => {
     try {
@@ -1887,6 +1962,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
+    loadEarlierHistory, earlierHasMore, earlierLoading,
     handleBuiltinSlashCommand,
     handleToolPresetChange, handleThinkingLevelChange, loadTools, loadSlashCommands, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,

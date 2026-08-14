@@ -193,6 +193,8 @@ export const enLocale: LocalePlugin = {
 		"chat.collapseProcess": "Collapse process details",
 		"chat.expandProcess": "Expand process details",
 		"chat.loadEarlier": "Scroll up to load earlier messages ({count} hidden)",
+		"chat.loadEarlierCompacted": "Scroll up to load conversation before compaction",
+		"chat.loadingEarlier": "Loading earlier conversation…",
 		"chat.extensionRequest": "extension request",
 		"chat.cancel": "Cancel",
 		"chat.confirm": "Confirm",

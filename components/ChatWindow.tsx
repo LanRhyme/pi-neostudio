@@ -397,6 +397,9 @@ export const ChatWindow = memo(function ChatWindow({
 		handlePromptWithStreamingBehavior,
 		handleAbortCompaction,
 		handleRecallQueue,
+		loadEarlierHistory,
+		earlierHasMore,
+		earlierLoading,
 		handleBuiltinSlashCommand,
 		handleToolPresetChange,
 		handleThinkingLevelChange,
@@ -444,6 +447,30 @@ export const ChatWindow = memo(function ChatWindow({
 	const prevScrollDistanceRef = useRef<number | null>(null);
 	// 自动滚动跟随：用户靠近底部时流式输出自动滚到底，上翻浏览时不打断
 	const stickToBottomRef = useRef(true);
+	// 可见窗口已到顶（startIndex === 0）时，哨兵触发加载压缩前的更早历史
+	const windowExhaustedRef = useRef(false);
+	const hasMoreRef = useRef(false);
+	const loadEarlierHistoryRef = useRef<() => void>(() => {});
+
+	// 包裹 loadEarlierHistory：加载更早历史前记录滚动位置，内容插入后恢复，
+	// 让 compaction 及之后的对话保持在视口同一位置
+	const loadEarlierWithScrollRestore = useCallback(async () => {
+		const container = scrollContainerRef.current;
+		const prevScrollHeight = container?.scrollHeight ?? 0;
+		const prevScrollTop = container?.scrollTop ?? 0;
+		await loadEarlierHistory();
+		if (container && !earlierLoading) {
+			requestAnimationFrame(() => {
+				if (container) {
+					container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
+				}
+			});
+		}
+	}, [loadEarlierHistory, earlierLoading, scrollContainerRef]);
+	loadEarlierHistoryRef.current = loadEarlierWithScrollRestore;
+	useEffect(() => {
+		windowExhaustedRef.current = !hasMoreRef.current;
+	});
 
 	// IntersectionObserver on the sentinel div at the top of the message list.
 	// When it becomes visible, load the next page of older messages.
@@ -454,6 +481,11 @@ export const ChatWindow = memo(function ChatWindow({
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0]?.isIntersecting) {
+					if (windowExhaustedRef.current) {
+						// 可见窗口已铺满：继续向上滚动时加载压缩前的更早对话
+						loadEarlierHistoryRef.current();
+						return;
+					}
 					// Save distance from top before prepending to restore scroll later
 					prevScrollDistanceRef.current = captureScrollDistance(
 						container.scrollHeight,
@@ -1206,16 +1238,26 @@ export const ChatWindow = memo(function ChatWindow({
 											renderedItems.length,
 											visibleCount,
 										);
+										hasMoreRef.current = hasMore;
 										return (
 											<>
-												{hasMore && (
+												{hasMore ? (
 													<div
 														ref={sentinelRef}
 														className="py-3 text-center text-xs text-text-muted"
 													>
 														{t("chat.loadEarlier", { count: startIndex })}
 													</div>
-												)}
+												) : earlierHasMore ? (
+													<div
+														ref={sentinelRef}
+														className="py-3 text-center text-xs text-text-muted"
+													>
+														{earlierLoading
+															? t("chat.loadingEarlier")
+															: t("chat.loadEarlierCompacted")}
+													</div>
+												) : null}
 												{renderedItems.slice(startIndex)}
 											</>
 										);
