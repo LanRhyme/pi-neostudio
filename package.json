@@ -42,13 +42,14 @@
     "dist": "next build && electron-builder",
     "dist:linux": "next build && electron-builder --linux",
     "dist:win": "next build && electron-builder --win",
-    "dist:mac": "next build && electron-builder --mac"
+    "dist:mac": "next build && electron-builder --mac",
+    "postinstall": "node scripts/patch-pi-theme.mjs"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "0.83.0",
-    "@earendil-works/pi-ai": "0.83.0",
-    "@earendil-works/pi-coding-agent": "0.83.0",
-    "@earendil-works/pi-tui": "0.83.0",
+    "@earendil-works/pi-agent-core": "^0.84.1",
+    "@earendil-works/pi-ai": "^0.84.1",
+    "@earendil-works/pi-coding-agent": "^0.84.1",
+    "@earendil-works/pi-tui": "^0.84.1",
     "@tiptap/extension-placeholder": "^3.29.2",
     "@tiptap/pm": "^3.29.2",
     "@tiptap/react": "^3.29.2",
