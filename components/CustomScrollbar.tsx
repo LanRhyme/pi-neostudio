@@ -92,7 +92,6 @@ export function CustomScrollbar({
 				width,
 				zIndex,
 				pointerEvents: "none",
-				opacity: hover ? 1 : 0.7,
 				transition: "opacity 0.15s",
 			}}
 			onMouseEnter={() => setHover(true)}
@@ -149,8 +148,8 @@ export function CustomScrollbar({
 					width: "100%",
 					borderRadius: width / 2,
 					background: hover
-						? "color-mix(in srgb, var(--text-muted) 85%, transparent)"
-						: "color-mix(in srgb, var(--text-dim) 45%, transparent)",
+						? "color-mix(in srgb, var(--text-muted) 90%, transparent)"
+						: "color-mix(in srgb, var(--text-dim) 55%, transparent)",
 					cursor: "pointer",
 					pointerEvents: "auto",
 					transition: "background 0.15s",
