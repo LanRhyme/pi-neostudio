@@ -4,52 +4,68 @@ import { join } from "node:path";
 
 let version = "unknown";
 try {
-  version = (JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as { version: string }).version;
-} catch { /* package not found, use default */ }
+	version = (
+		JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as {
+			version: string;
+		}
+	).version;
+} catch {
+	/* package not found, use default */
+}
 let piVersion = "unknown";
 try {
-  const piPkgPath = join(__dirname, "node_modules/@earendil-works/pi-coding-agent/package.json");
-  piVersion = (JSON.parse(readFileSync(piPkgPath, "utf8")) as { version: string }).version;
-} catch { /* package not found, use default */ }
+	const piPkgPath = join(
+		__dirname,
+		"node_modules/@earendil-works/pi-coding-agent/package.json",
+	);
+	piVersion = (
+		JSON.parse(readFileSync(piPkgPath, "utf8")) as { version: string }
+	).version;
+} catch {
+	/* package not found, use default */
+}
 
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: __dirname,
-  serverExternalPackages: [
-    "undici",
-    "@earendil-works/pi-coding-agent",
-    "@earendil-works/pi-agent-core",
-    "@earendil-works/pi-ai",
-    "@earendil-works/pi-tui",
-  ],
-  allowedDevOrigins: ["127.0.0.1", "192.168.*.*"],
-  devIndicators: false,
-  async headers() {
-    return [
-      {
-        source: "/",
-        headers: [
-          { key: "Cache-Control", value: "private, no-cache, max-age=0, must-revalidate" },
-        ],
-      },
-      {
-        source: "/sw.js",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
-          { key: "Service-Worker-Allowed", value: "/" },
-        ],
-      },
-      {
-        source: "/manifest.webmanifest",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
-        ],
-      },
-    ];
-  },
-  env: {
-    NEXT_PUBLIC_APP_VERSION: version,
-    NEXT_PUBLIC_PI_VERSION: piVersion,
-  },
+	outputFileTracingRoot: __dirname,
+	serverExternalPackages: [
+		"undici",
+		"@earendil-works/pi-coding-agent",
+		"@earendil-works/pi-agent-core",
+		"@earendil-works/pi-ai",
+		"@earendil-works/pi-tui",
+	],
+	allowedDevOrigins: ["127.0.0.1", "192.168.*.*"],
+	devIndicators: false,
+	async headers() {
+		return [
+			{
+				source: "/",
+				headers: [
+					{
+						key: "Cache-Control",
+						value: "private, no-cache, max-age=0, must-revalidate",
+					},
+				],
+			},
+			{
+				source: "/sw.js",
+				headers: [
+					{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+					{ key: "Service-Worker-Allowed", value: "/" },
+				],
+			},
+			{
+				source: "/manifest.webmanifest",
+				headers: [
+					{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+				],
+			},
+		];
+	},
+	env: {
+		NEXT_PUBLIC_APP_VERSION: version,
+		NEXT_PUBLIC_PI_VERSION: piVersion,
+	},
 };
 
 export default nextConfig;

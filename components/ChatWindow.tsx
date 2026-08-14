@@ -722,7 +722,6 @@ export const ChatWindow = memo(function ChatWindow({
 		/>
 	);
 
-
 	if (loading) {
 		return (
 			<div className="flex h-full items-center justify-center text-text-muted">
@@ -942,7 +941,6 @@ export const ChatWindow = memo(function ChatWindow({
 										margin: "0 auto",
 									}}
 								>
-
 									{(() => {
 										const toolResultsMap = new Map<string, ToolResultMessage>();
 										for (const msg of messages) {
@@ -1367,7 +1365,10 @@ export const ChatWindow = memo(function ChatWindow({
 						>
 							<div style={{ maxWidth: 820, margin: "0 auto" }}>
 								{chatInputElement}
-								<ExtensionStatusBar statuses={extensionStatuses} widgets={extensionWidgets} />
+								<ExtensionStatusBar
+									statuses={extensionStatuses}
+									widgets={extensionWidgets}
+								/>
 							</div>
 						</div>
 						{/* 自定义主题滚动条（位于 minimap 左侧） */}

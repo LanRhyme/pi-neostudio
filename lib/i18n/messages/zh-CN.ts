@@ -551,7 +551,8 @@ export const zhCNLocale: LocalePlugin = {
 		"git.aiModelDesc": "用于生成提交信息的模型，留空则使用默认模型",
 		"git.aiModelDefault": "默认模型",
 		"git.aiMaxTokens": "最大输出 Token 数",
-		"git.aiMaxTokensDesc": "输出 Token 预算（默认 1000000），思考型模型需要大预算，超出模型上限时自动截断",
+		"git.aiMaxTokensDesc":
+			"输出 Token 预算（默认 1000000），思考型模型需要大预算，超出模型上限时自动截断",
 		"git.aiPrompt": "提示词模板",
 		"git.aiPromptDesc":
 			"用 {diff} 占位符表示暂存区内容；留空使用内置默认提示词",
