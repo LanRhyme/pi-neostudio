@@ -298,7 +298,8 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
   const btnRef = useRef<HTMLButtonElement>(null);
   const treeScrollRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  // 分段显示：行数预算，打开时自动展开到活动节点所在行（完整显示整个会话）
+  // 分段显示：行数预算，打开时自动展开到活动节点所在行（完整显示整个会话）。
+  // 注意：不随活动节点滚动定位——下拉固定从对话开头显示，活动节点以高亮标记
   const [visibleRows, setVisibleRows] = useState(INITIAL_ROWS);
 
   useEffect(() => {
@@ -309,17 +310,7 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
     );
   }, [tree, activeLeafId]);
 
-  // 打开或导航后，滚动树容器让活动节点保持可见（行高统一 24px）
-  useEffect(() => {
-    if (!open) return;
-    const activeRow = findActiveRow(tree, activeLeafId);
-    if (activeRow === null) return;
-    const el = treeScrollRef.current;
-    if (el) {
-      const target = activeRow * 24 - el.clientHeight / 2;
-      el.scrollTop = Math.max(0, target);
-    }
-  }, [open, tree, activeLeafId]);
+
 
   const showMoreLabel = t("i18n.showMoreRows");
   const handleShowMore = useCallback(() => {
