@@ -195,6 +195,7 @@ export const enLocale: LocalePlugin = {
 		"chat.loadEarlier": "Scroll up to load earlier messages ({count} hidden)",
 		"chat.loadEarlierCompacted": "Scroll up to load conversation before compaction",
 		"chat.jumpToBottom": "Jump to bottom",
+		"chat.minimapLoadEarlier": "Load earlier conversation",
 		"chat.loadingEarlier": "Loading earlier conversation…",
 		"chat.extensionRequest": "extension request",
 		"chat.cancel": "Cancel",

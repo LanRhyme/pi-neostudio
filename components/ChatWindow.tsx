@@ -1338,6 +1338,10 @@ export const ChatWindow = memo(function ChatWindow({
 								scrollContainer={scrollContainerRef}
 								messageRefs={messageRefs}
 								onRevealHistory={revealHistoryForMinimap}
+								earlierHasMore={earlierHasMore}
+								earlierLoading={earlierLoading}
+								onLoadEarlier={loadEarlierHistory}
+								loadEarlierLabel={t("chat.minimapLoadEarlier")}
 							/>
 						)}
 						{/* Floating input overlay — sits above scroll area */}

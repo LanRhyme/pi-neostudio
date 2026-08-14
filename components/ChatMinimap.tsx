@@ -13,6 +13,11 @@ interface Props {
   scrollContainer: RefObject<HTMLDivElement | null>;
   messageRefs: RefObject<(HTMLDivElement | null)[]>;
   onRevealHistory: () => void;
+  /** 是否存在压缩前尚未加载的更早对话（用于分段加载） */
+  earlierHasMore?: boolean;
+  earlierLoading?: boolean;
+  onLoadEarlier?: () => void;
+  loadEarlierLabel?: string;
 }
 
 const MINIMAP_WIDTH = 36;
@@ -190,16 +195,16 @@ interface NodeLayout {
   fillsHeight: boolean;
 }
 
-function layoutNodes(allNodes: NodeInfo[], minimapHeight: number): NodeLayout {
+function layoutNodes(allNodes: NodeInfo[], minimapHeight: number, topPad: number): NodeLayout {
   if (allNodes.length === 0) {
     return { nodes: [], gap: MAX_NODE_GAP, fillsHeight: false };
   }
 
   const height = Math.max(1, minimapHeight);
-  const usableHeight = Math.max(0, height - MINIMAP_PADDING * 2);
+  const usableHeight = Math.max(0, height - topPad - MINIMAP_PADDING);
   if (allNodes.length === 1) {
     return {
-      nodes: [{ ...allNodes[0], topRatio: MINIMAP_PADDING / height }],
+      nodes: [{ ...allNodes[0], topRatio: topPad / height }],
       gap: MAX_NODE_GAP,
       fillsHeight: false,
     };
@@ -210,7 +215,7 @@ function layoutNodes(allNodes: NodeInfo[], minimapHeight: number): NodeLayout {
   return {
     nodes: allNodes.map((node, index) => ({
       ...node,
-      topRatio: (MINIMAP_PADDING + index * gap) / height,
+      topRatio: (topPad + index * gap) / height,
     })),
     gap,
     fillsHeight: naturalGap <= MAX_NODE_GAP,
@@ -223,6 +228,10 @@ export function ChatMinimap({
   scrollContainer,
   messageRefs,
   onRevealHistory,
+  earlierHasMore = false,
+  earlierLoading = false,
+  onLoadEarlier,
+  loadEarlierLabel,
 }: Props) {
   const [visible, setVisible] = useState(false);
   const [allNodes, setAllNodes] = useState<NodeInfo[]>([]);
@@ -241,7 +250,6 @@ export function ChatMinimap({
   const previewBoxRef = useRef<HTMLDivElement>(null);
   const previewItemRefs = useRef(new Map<number, HTMLDivElement>());
   const previewHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const previewHidingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewHiding, setPreviewHiding] = useState(false);
   const activeNodeLockRef = useRef<{ index: number; until: number } | null>(null);
   const pendingNavigationRef = useRef<{
@@ -258,9 +266,11 @@ export function ChatMinimap({
   const allMessagesRef = useRef(allMessages);
   allMessagesRef.current = allMessages;
 
+  // 顶部有“加载更早对话”按钮时，把轨道整体下移避免重叠
+  const topPad = MINIMAP_PADDING + (earlierHasMore || earlierLoading ? 22 : 0);
   const nodeLayout = useMemo(
-    () => layoutNodes(allNodes, minimapHeight),
-    [allNodes, minimapHeight],
+    () => layoutNodes(allNodes, minimapHeight, topPad),
+    [allNodes, minimapHeight, topPad],
   );
   const { nodes: positionedNodes, gap: nodeGap } = nodeLayout;
   nodeLayoutRef.current = nodeLayout;
@@ -593,8 +603,8 @@ export function ChatMinimap({
 
   const lastNodeTop = positionedNodes.length > 0
     ? positionedNodes[positionedNodes.length - 1].topRatio * minimapHeight
-    : MINIMAP_PADDING;
-  const railHeight = Math.max(1, lastNodeTop - MINIMAP_PADDING);
+    : topPad;
+  const railHeight = Math.max(1, lastNodeTop - topPad);
 
   return (
     <div
@@ -617,11 +627,43 @@ export function ChatMinimap({
         overflow: "visible",
       }}
     >
+      {(earlierHasMore || earlierLoading) && (
+        <button
+          type="button"
+          onClick={onLoadEarlier}
+          disabled={earlierLoading || !onLoadEarlier}
+          title={loadEarlierLabel}
+          aria-label={loadEarlierLabel}
+          style={{
+            position: "absolute",
+            top: 2,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 20,
+            height: 18,
+            borderRadius: 9,
+            border: "1px solid var(--border)",
+            background: "var(--bg-panel)",
+            color: "var(--text-muted)",
+            cursor: earlierLoading ? "wait" : "pointer",
+            fontSize: 10,
+            lineHeight: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            zIndex: 5,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          }}
+        >
+          {earlierLoading ? "…" : "↑"}
+        </button>
+      )}
       <div
         style={{
           position: "absolute",
           left: "50%",
-          top: MINIMAP_PADDING,
+          top: topPad,
           height: railHeight,
           width: 1,
           background: "var(--border)",
