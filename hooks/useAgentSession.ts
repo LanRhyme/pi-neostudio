@@ -1811,7 +1811,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, []);
 
   const handleScrollPositionChange = useCallback(() => {
-    if (!agentRunningRef.current) return;
+    // 用户上翻浏览历史时也清除"完成后滚动到底部"标志，否则运行结束后
+    // 任何消息长度变化（如加载压缩前的更早对话）都会把用户拽回底部
     if (Date.now() < ignoreProgrammaticScrollUntilRef.current) return;
     if (Date.now() > userScrollIntentUntilRef.current) return;
     completionScrollAllowedRef.current = false;

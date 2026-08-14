@@ -539,12 +539,24 @@ export const ChatWindow = memo(function ChatWindow({
 		uiSettings.autoScroll,
 	]);
 
+	const [showJumpToBottom, setShowJumpToBottom] = useState(false);
 	const handleScroll = useCallback(() => {
 		const container = scrollContainerRef.current;
 		if (!container) return;
-		stickToBottomRef.current =
+		const atBottom =
 			container.scrollHeight - container.scrollTop - container.clientHeight <
 			120;
+		stickToBottomRef.current = atBottom;
+		// 值不变时不更新状态，避免每次滚动都触发重渲染
+		setShowJumpToBottom((prev) => (prev === atBottom ? prev : !atBottom));
+	}, [scrollContainerRef]);
+
+	const jumpToBottom = useCallback(() => {
+		stickToBottomRef.current = true;
+		setShowJumpToBottom(false);
+		const container = scrollContainerRef.current;
+		if (container)
+			container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
 	}, [scrollContainerRef]);
 
 	// Push session stats up to AppShell for the top bar.
@@ -909,7 +921,7 @@ export const ChatWindow = memo(function ChatWindow({
 							key={session?.id ?? sessionIdRef.current ?? "default"}
 							ref={scrollContainerRef}
 							onScroll={handleScroll}
-							className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:none] panel-content-in"
+							className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:thin] panel-content-in"
 						>
 							<div
 								style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}
@@ -1347,6 +1359,55 @@ export const ChatWindow = memo(function ChatWindow({
 								<ExtensionStatusBar statuses={extensionStatuses} />
 							</div>
 						</div>
+						{/* 不在底部时显示一键回底部悬浮按钮 */}
+						{showJumpToBottom && (
+							<button
+								onClick={jumpToBottom}
+								title={t("chat.jumpToBottom")}
+								aria-label={t("chat.jumpToBottom")}
+								style={{
+									position: "absolute",
+									right: isMobile ? 16 : CHAT_MINIMAP_WIDTH + 16,
+									bottom: 32,
+									zIndex: 60,
+									width: 36,
+									height: 36,
+									borderRadius: "50%",
+									background: "var(--bg-panel)",
+									border: "1px solid var(--border)",
+									boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+									cursor: "pointer",
+									color: "var(--text-muted)",
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									transition: "color 0.12s, border-color 0.12s",
+								}}
+								onMouseEnter={(e) => {
+									e.currentTarget.style.color = "var(--accent)";
+									e.currentTarget.style.borderColor = "rgba(37,99,235,0.4)";
+								}}
+								onMouseLeave={(e) => {
+									e.currentTarget.style.color = "var(--text-muted)";
+									e.currentTarget.style.borderColor = "var(--border)";
+								}}
+							>
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2.2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									aria-hidden="true"
+								>
+									<path d="M12 5v14" />
+									<path d="m19 12-7 7-7-7" />
+								</svg>
+							</button>
+						)}
 					</div>
 				</>
 			)}

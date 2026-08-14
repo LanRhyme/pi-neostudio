@@ -93,6 +93,29 @@ function isUserMessageNode(node: SessionTreeNode): boolean {
     : false;
 }
 
+// 对话树分段显示：初始行数、自动展开上限、每页增量
+const INITIAL_ROWS = 100;
+const MAX_AUTO_EXPAND_ROWS = 500;
+const ROWS_PER_PAGE = 100;
+
+/** 按渲染顺序（深度优先，与 TreeNodeView 一致）计算活动叶子所在的行号，单次遍历 */
+function findActiveRow(nodes: SessionTreeNode[], targetId: string | null): number | null {
+  if (!targetId) return null;
+  let row = 0;
+  const walk = (list: SessionTreeNode[]): number | null => {
+    for (const node of list) {
+      if (node.entry.id === targetId || node.compressedEntryIds?.includes(targetId)) {
+        return row;
+      }
+      row += 1;
+      const found = walk(node.children);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  return walk(nodes);
+}
+
 interface TreeNodeProps {
   node: SessionTreeNode;
   activePathIds: Set<string>;
@@ -100,9 +123,14 @@ interface TreeNodeProps {
   isLast: boolean;
   parentLines: boolean[]; // whether ancestor at each depth has more siblings after
   onSelect: (id: string) => void;
+  /** 本节点在渲染序列中的行号（用于分段显示） */
+  rowIndex: number;
+  visibleRows: number;
+  onShowMore: () => void;
+  showMoreLabel: string;
 }
 
-function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelect }: TreeNodeProps) {
+function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelect, rowIndex, visibleRows, onShowMore, showMoreLabel }: TreeNodeProps) {
   const { node: rep, skipped } = compress(node);
   const isActive = activePathIds.has(rep.entry.id);
   const isOnPath = activePathIds.has(node.entry.id) || activePathIds.has(rep.entry.id);
@@ -213,18 +241,51 @@ function TreeNodeView({ node, activePathIds, depth, isLast, parentLines, onSelec
         </span>
       </div>
 
-      {/* Children */}
-      {rep.children.map((child, idx) => (
-        <TreeNodeView
-          key={child.entry.id}
-          node={child}
-          activePathIds={activePathIds}
-          depth={depth + 1}
-          isLast={idx === rep.children.length - 1}
-          parentLines={[...parentLines, !isLast]}
-          onSelect={onSelect}
-        />
-      ))}
+      {/* Children — 分段渲染：行号超过预算时显示"显示更多"按钮 */}
+      {rep.children.length > 0 &&
+        (() => {
+          const rendered: React.ReactNode[] = [];
+          for (let i = 0; i < rep.children.length && rowIndex + 1 + i < visibleRows; i++) {
+            rendered.push(
+              <TreeNodeView
+                key={rep.children[i].entry.id}
+                node={rep.children[i]}
+                activePathIds={activePathIds}
+                depth={depth + 1}
+                isLast={i === rep.children.length - 1}
+                parentLines={[...parentLines, !isLast]}
+                onSelect={onSelect}
+                rowIndex={rowIndex + 1 + i}
+                visibleRows={visibleRows}
+                onShowMore={onShowMore}
+                showMoreLabel={showMoreLabel}
+              />,
+            );
+          }
+          if (rendered.length < rep.children.length) {
+            rendered.push(
+              <div key="show-more" style={{ padding: "4px 0 4px 32px" }}>
+                <button
+                  onClick={onShowMore}
+                  style={{
+                    fontSize: 11,
+                    color: "var(--accent)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "2px 8px",
+                    borderRadius: 5,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(37,99,235,0.08)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                >
+                  {showMoreLabel}
+                </button>
+              </div>,
+            );
+          }
+          return rendered;
+        })()}
     </div>
   );
 }
@@ -235,6 +296,21 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
   const open = openProp !== undefined ? openProp : openInternal;
   const btnRef = useRef<HTMLButtonElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  // 分段显示：行数预算，打开时自动展开到活动节点所在行（完整显示整个会话）
+  const [visibleRows, setVisibleRows] = useState(INITIAL_ROWS);
+
+  useEffect(() => {
+    const activeRow = findActiveRow(tree, activeLeafId);
+    if (activeRow === null) return;
+    setVisibleRows((prev) =>
+      Math.max(prev, Math.min(activeRow + 1, MAX_AUTO_EXPAND_ROWS)),
+    );
+  }, [tree, activeLeafId]);
+
+  const showMoreLabel = t("i18n.showMoreRows");
+  const handleShowMore = useCallback(() => {
+    setVisibleRows((prev) => prev + ROWS_PER_PAGE);
+  }, []);
 
   useEffect(() => {
     if (!open || !inline) return;
@@ -345,6 +421,10 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
                   isLast
                   parentLines={[]}
                   onSelect={handleSelect}
+                  rowIndex={0}
+                  visibleRows={visibleRows}
+                  onShowMore={handleShowMore}
+                  showMoreLabel={showMoreLabel}
                 />
               </div>
             ) : (
@@ -405,6 +485,10 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
                 isLast
                 parentLines={[]}
                 onSelect={handleSelect}
+                rowIndex={0}
+                visibleRows={visibleRows}
+                onShowMore={handleShowMore}
+                showMoreLabel={showMoreLabel}
               />
             </div>
           ) : (
