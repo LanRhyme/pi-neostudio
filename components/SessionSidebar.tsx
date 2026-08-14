@@ -225,6 +225,88 @@ function savePinnedProjects(projects: Set<string>): void {
   }
 }
 
+const PINNED_SESSIONS_STORAGE_KEY = "pi-web:pinned-sessions";
+const SESSION_ORDER_STORAGE_KEY = "pi-web:session-order";
+
+/** 置顶会话：按置顶顺序排列（新置顶在前） */
+function loadPinnedSessions(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PINNED_SESSIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePinnedSessions(ids: string[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (ids.length === 0) window.localStorage.removeItem(PINNED_SESSIONS_STORAGE_KEY);
+    else window.localStorage.setItem(PINNED_SESSIONS_STORAGE_KEY, JSON.stringify(ids));
+  } catch {
+    // ignore
+  }
+}
+
+/** 手动排序：sessionId -> 排序值（越小越靠前，仅作用于未置顶的会话） */
+function loadSessionOrder(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(SESSION_ORDER_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object") {
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+      }
+      return out;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSessionOrder(order: Record<string, number>): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (Object.keys(order).length === 0) window.localStorage.removeItem(SESSION_ORDER_STORAGE_KEY);
+    else window.localStorage.setItem(SESSION_ORDER_STORAGE_KEY, JSON.stringify(order));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * 会话排序：置顶（按置顶顺序）→ 手动排序（升序）→ 最近修改（倒序）
+ */
+function compareSessions(
+  a: SessionInfo,
+  b: SessionInfo,
+  pinnedSessions: string[],
+  sessionOrder: Record<string, number>,
+): number {
+  const pa = pinnedSessions.indexOf(a.id);
+  const pb = pinnedSessions.indexOf(b.id);
+  if (pa >= 0 || pb >= 0) {
+    if (pa < 0) return 1;
+    if (pb < 0) return -1;
+    return pa - pb;
+  }
+  const ra = sessionOrder[a.id];
+  const rb = sessionOrder[b.id];
+  if (ra !== undefined || rb !== undefined) {
+    if (ra === undefined) return 1;
+    if (rb === undefined) return -1;
+    return ra - rb;
+  }
+  return b.modified.localeCompare(a.modified);
+}
+
 /**
  * Return all projects (deduped by projectRoot so worktrees collapse into their
  * main repo) sorted by pinned status and most recent session activity.
@@ -601,7 +683,11 @@ interface SessionTreeNode {
   children: SessionTreeNode[];
 }
 
-function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
+function buildSessionTree(
+  sessions: SessionInfo[],
+  pinnedSessions: string[] = [],
+  sessionOrder: Record<string, number> = {},
+): SessionTreeNode[] {
   const byId = new Map<string, SessionTreeNode>();
   for (const s of sessions) {
     byId.set(s.id, { session: s, children: [] });
@@ -636,9 +722,9 @@ function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
     }
   }
 
-  // Sort each level by modified desc
+  // Sort each level: pinned first, then manual order, then modified desc
   const sort = (nodes: SessionTreeNode[]) => {
-    nodes.sort((a, b) => b.session.modified.localeCompare(a.session.modified));
+    nodes.sort((a, b) => compareSessions(a.session, b.session, pinnedSessions, sessionOrder));
     nodes.forEach((n) => sort(n.children));
   };
   sort(roots);
@@ -761,6 +847,19 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   useEffect(() => {
     savePinnedProjects(pinnedProjects);
   }, [pinnedProjects]);
+
+  // 会话级置顶与手动排序（localStorage 持久化）
+  const [pinnedSessions, setPinnedSessions] = useState<string[]>(() => loadPinnedSessions());
+  const [sessionOrder, setSessionOrder] = useState<Record<string, number>>(() => loadSessionOrder());
+
+  useEffect(() => {
+    savePinnedSessions(pinnedSessions);
+  }, [pinnedSessions]);
+
+  useEffect(() => {
+    saveSessionOrder(sessionOrder);
+  }, [sessionOrder]);
+
   // Worktree switcher state
   const [worktreeState, setWorktreeState] = useState<WorktreeState | null>(null);
   const [wtDropdownOpen, setWtDropdownOpen] = useState(false);
@@ -843,6 +942,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         if (prev.size === 0) return prev;
         const next = new Set([...prev].filter((id) => existingIds.has(id)));
         return next.size === prev.size ? prev : next;
+      });
+      // 同步清理已删除会话的置顶与排序记录
+      setPinnedSessions((prev) => (prev.some((id) => !existingIds.has(id)) ? prev.filter((id) => existingIds.has(id)) : prev));
+      setSessionOrder((prev) => {
+        const keys = Object.keys(prev);
+        if (!keys.some((id) => !existingIds.has(id))) return prev;
+        const next: Record<string, number> = {};
+        for (const k of keys) {
+          if (existingIds.has(k)) next[k] = prev[k];
+        }
+        return next;
       });
       setError(null);
       if (!showLoading) {
@@ -1260,8 +1370,100 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         }
       : null);
 
-  // Build parent-child tree within the filtered set
-  const sessionTree = buildSessionTree(filteredSessions);
+  // Build parent-child tree within the filtered set (pinned + manual order applied)
+  const sessionTree = buildSessionTree(filteredSessions, pinnedSessions, sessionOrder);
+
+  // 会话拖动排序状态（HTML5 DnD，状态存 ref 避免高频 dragOver 重渲染）
+  const dragSessionRef = useRef<string | null>(null);
+  const dropTargetRef = useRef<{ id: string; before: boolean } | null>(null);
+  const [dragOverHint, setDragOverHint] = useState<{ id: string; before: boolean } | null>(null);
+
+  /** 在树中查找会话所在兄弟列表（拖动只作用于同一层级） */
+  const findSiblingList = useCallback((id: string): SessionTreeNode[] | null => {
+    const search = (nodes: SessionTreeNode[]): SessionTreeNode[] | null => {
+      for (const n of nodes) {
+        if (n.session.id === id) return nodes;
+        const found = search(n.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    return search(sessionTree);
+  }, [sessionTree]);
+
+  const togglePinSession = useCallback((id: string) => {
+    setPinnedSessions((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev],
+    );
+  }, []);
+
+  const handleSessionDragStart = useCallback((id: string) => {
+    dragSessionRef.current = id;
+  }, []);
+
+  const handleSessionDragOver = useCallback((id: string, before: boolean) => {
+    if (dragSessionRef.current === null || dragSessionRef.current === id) return;
+    dropTargetRef.current = { id, before };
+    // 仅在目标或位置变化时更新状态，避免高频 dragOver 导致整树重渲染
+    setDragOverHint((prev) => (prev && prev.id === id && prev.before === before ? prev : { id, before }));
+  }, []);
+
+  const handleSessionDrop = useCallback(() => {
+    const srcId = dragSessionRef.current;
+    const target = dropTargetRef.current;
+    dragSessionRef.current = null;
+    dropTargetRef.current = null;
+    setDragOverHint(null);
+    if (!srcId || !target || srcId === target.id) return;
+
+    const siblings = findSiblingList(srcId);
+    if (!siblings) return;
+    const ordered = [...siblings].sort((a, b) =>
+      compareSessions(a.session, b.session, pinnedSessions, sessionOrder),
+    );
+    const fromIdx = ordered.findIndex((n) => n.session.id === srcId);
+    const toIdx = ordered.findIndex((n) => n.session.id === target.id);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    const fromPinned = pinnedSessions.includes(srcId);
+    const toPinned = pinnedSessions.includes(target.id);
+    if (fromPinned && toPinned) {
+      // 置顶区内移动：调整置顶顺序
+      setPinnedSessions((prev) => {
+        const next = prev.filter((id) => id !== srcId);
+        const tIdx = next.indexOf(target.id);
+        const insertAt = Math.max(0, target.before ? tIdx : tIdx + 1);
+        next.splice(insertAt, 0, srcId);
+        return next;
+      });
+      return;
+    }
+    if (fromPinned !== toPinned) return; // 跨区（置顶/普通）不支持拖动
+
+    // 普通区移动：对整个非置顶列表重排为整数排序值
+    const nonPinnedOrdered = ordered
+      .filter((n) => !pinnedSessions.includes(n.session.id))
+      .map((n) => n.session.id);
+    const fIdx = nonPinnedOrdered.indexOf(srcId);
+    const tIdx2 = nonPinnedOrdered.indexOf(target.id);
+    if (fIdx < 0 || tIdx2 < 0) return;
+    const insertAt = target.before ? tIdx2 : tIdx2 + 1;
+    const reordered = nonPinnedOrdered.filter((id) => id !== srcId);
+    reordered.splice(Math.min(Math.max(insertAt, 0), reordered.length), 0, srcId);
+    setSessionOrder((prev) => {
+      const next = { ...prev };
+      reordered.forEach((id, i) => {
+        next[id] = i;
+      });
+      return next;
+    });
+  }, [pinnedSessions, sessionOrder, findSiblingList]);
+
+  const handleSessionDragEnd = useCallback(() => {
+    dragSessionRef.current = null;
+    dropTargetRef.current = null;
+    setDragOverHint(null);
+  }, []);
 
   // All-sessions mode（未选择项目时）按项目分组，旧项目的会话不再被埋没
   const groupedSessionTrees = useMemo(() => {
@@ -2308,12 +2510,19 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                           selectedSessionId={selectedSessionId}
                           runningSessionIds={runningSessionIds}
                           unreadSessionIds={unreadSessionIds}
+                          pinnedSessions={pinnedSessions}
+                          dragOverHint={dragOverHint}
                           onSelectSession={handleSelectSessionFromList}
                           onRenamed={loadSessions}
                           onSessionDeleted={(id) => {
                             onSessionDeleted?.(id);
                             loadSessions();
                           }}
+                          onTogglePin={togglePinSession}
+                          onDragStart={handleSessionDragStart}
+                          onDragOver={handleSessionDragOver}
+                          onDrop={handleSessionDrop}
+                          onDragEnd={handleSessionDragEnd}
                           depth={0}
                         />
                       </div>
@@ -2331,12 +2540,19 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                       selectedSessionId={selectedSessionId}
                       runningSessionIds={runningSessionIds}
                       unreadSessionIds={unreadSessionIds}
+                      pinnedSessions={pinnedSessions}
+                      dragOverHint={dragOverHint}
                       onSelectSession={handleSelectSessionFromList}
                       onRenamed={loadSessions}
                       onSessionDeleted={(id) => {
                         onSessionDeleted?.(id);
                         loadSessions();
                       }}
+                      onTogglePin={togglePinSession}
+                      onDragStart={handleSessionDragStart}
+                      onDragOver={handleSessionDragOver}
+                      onDrop={handleSessionDrop}
+                      onDragEnd={handleSessionDragEnd}
                       depth={0}
                     />
                   </div>
@@ -2497,18 +2713,32 @@ function SessionTreeItem({
   selectedSessionId,
   runningSessionIds,
   unreadSessionIds,
+  pinnedSessions,
+  dragOverHint,
   onSelectSession,
   onRenamed,
   onSessionDeleted,
+  onTogglePin,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
   depth,
 }: {
   node: SessionTreeNode;
   selectedSessionId: string | null;
   runningSessionIds: Set<string>;
   unreadSessionIds: Set<string>;
+  pinnedSessions: string[];
+  dragOverHint: { id: string; before: boolean } | null;
   onSelectSession: (s: SessionInfo) => void;
   onRenamed?: () => void;
   onSessionDeleted?: (id: string) => void;
+  onTogglePin: (id: string) => void;
+  onDragStart: (id: string) => void;
+  onDragOver: (id: string, before: boolean) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
   depth: number;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -2533,9 +2763,16 @@ function SessionTreeItem({
           isSelected={node.session.id === selectedSessionId}
           isRunning={runningSessionIds.has(node.session.id)}
           isUnread={unreadSessionIds.has(node.session.id)}
+          isPinned={pinnedSessions.includes(node.session.id)}
+          isDragOver={dragOverHint?.id === node.session.id ? dragOverHint : null}
           onClick={() => onSelectSession(node.session)}
           onRenamed={onRenamed}
           onDeleted={(id) => onSessionDeleted?.(id)}
+          onTogglePin={() => onTogglePin(node.session.id)}
+          onDragStart={() => onDragStart(node.session.id)}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onDragEnd={onDragEnd}
           depth={depth}
           hasChildren={hasChildren}
           collapsed={collapsed}
@@ -2551,9 +2788,16 @@ function SessionTreeItem({
               selectedSessionId={selectedSessionId}
               runningSessionIds={runningSessionIds}
               unreadSessionIds={unreadSessionIds}
+              pinnedSessions={pinnedSessions}
+              dragOverHint={dragOverHint}
               onSelectSession={onSelectSession}
               onRenamed={onRenamed}
               onSessionDeleted={onSessionDeleted}
+              onTogglePin={onTogglePin}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+              onDragEnd={onDragEnd}
               depth={depth + 1}
             />
           ))}
@@ -2633,9 +2877,16 @@ function SessionItem({
   isSelected,
   isRunning,
   isUnread,
+  isPinned = false,
+  isDragOver = null,
   onClick,
   onRenamed,
   onDeleted,
+  onTogglePin,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
   depth = 0,
   hasChildren = false,
   collapsed = false,
@@ -2645,9 +2896,16 @@ function SessionItem({
   isSelected: boolean;
   isRunning?: boolean;
   isUnread?: boolean;
+  isPinned?: boolean;
+  isDragOver?: { id: string; before: boolean } | null;
   onClick: () => void;
   onRenamed?: () => void;
   onDeleted?: (id: string) => void;
+  onTogglePin?: () => void;
+  onDragStart?: (id: string) => void;
+  onDragOver?: (id: string, before: boolean) => void;
+  onDrop?: () => void;
+  onDragEnd?: () => void;
   depth?: number;
   hasChildren?: boolean;
   collapsed?: boolean;
@@ -2724,6 +2982,26 @@ function SessionItem({
       onClick={confirmDelete || renaming ? undefined : onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); }}
+      draggable={!confirmDelete && !renaming}
+      onDragStart={(e) => {
+        if (confirmDelete || renaming) return;
+        e.dataTransfer.setData("text/plain", session.id);
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart?.(session.id);
+      }}
+      onDragOver={(e) => {
+        if (confirmDelete || renaming) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        const rect = e.currentTarget.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        onDragOver?.(session.id, before);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop?.();
+      }}
+      onDragEnd={() => onDragEnd?.()}
       style={{
         height: ITEM_HEIGHT,
         display: "flex",
@@ -2736,12 +3014,19 @@ function SessionItem({
           : isSelected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent",
         borderLeft: confirmDelete
           ? "2px solid var(--danger)"
-          : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
+          : isPinned
+            ? "2px solid var(--accent)"
+            : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
         transform: hovered ? "translateX(2px)" : "translateX(0)",
         transition: "background 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
         opacity: deleting ? 0.5 : 1,
         gap: 6,
         overflow: "hidden",
+        boxShadow: isDragOver
+          ? isDragOver.before
+            ? "inset 0 2px 0 var(--accent)"
+            : "inset 0 -2px 0 var(--accent)"
+          : undefined,
       }}
     >
       {confirmDelete ? (
@@ -2838,6 +3123,23 @@ function SessionItem({
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                 {title}
               </span>
+              {isPinned && (
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}
+                  aria-hidden="true"
+                >
+                  <path d="M8 3h8l-1 3v4l3 3v2H6v-2l3-3V6L8 3z" />
+                  <line x1="12" y1="15" x2="12" y2="21" />
+                </svg>
+              )}
             </div>
             <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 11, minWidth: 0 }}>
               {isRunning ? (
@@ -2887,7 +3189,53 @@ function SessionItem({
 
           {/* Action buttons — shown on hover */}
           {hovered && (
-            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+            <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+              <span
+                title={t("sidebar.dragToReorder")}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 20, height: 32, flexShrink: 0, cursor: "grab",
+                  color: "var(--text-dim)",
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="9" cy="6" r="1.6" />
+                  <circle cx="9" cy="12" r="1.6" />
+                  <circle cx="9" cy="18" r="1.6" />
+                  <circle cx="15" cy="6" r="1.6" />
+                  <circle cx="15" cy="12" r="1.6" />
+                  <circle cx="15" cy="18" r="1.6" />
+                </svg>
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onTogglePin?.(); }}
+                title={isPinned ? t("sidebar.unpinSession") : t("sidebar.pinSession")}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 26, height: 26, padding: 0,
+                  background: isPinned ? "rgba(37,99,235,0.12)" : "var(--bg-hover)",
+                  border: `1px solid ${isPinned ? "rgba(37,99,235,0.35)" : "var(--border)"}`,
+                  borderRadius: 7,
+                  color: isPinned ? "var(--accent)" : "var(--text-muted)",
+                  cursor: "pointer", flexShrink: 0,
+                  transition: "background 0.12s, color 0.12s, border-color 0.12s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-selected)";
+                  e.currentTarget.style.color = "var(--accent)";
+                  e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = isPinned ? "rgba(37,99,235,0.12)" : "var(--bg-hover)";
+                  e.currentTarget.style.color = isPinned ? "var(--accent)" : "var(--text-muted)";
+                  e.currentTarget.style.borderColor = isPinned ? "rgba(37,99,235,0.35)" : "var(--border)";
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3h8l-1 3v4l3 3v2H6v-2l3-3V6L8 3z" />
+                  <line x1="12" y1="15" x2="12" y2="21" />
+                </svg>
+              </button>
               <button
                 onClick={startRename}
                 title={t("sidebar.rename")}

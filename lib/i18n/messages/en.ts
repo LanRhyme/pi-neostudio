@@ -142,6 +142,9 @@ export const enLocale: LocalePlugin = {
 			"Delete (Shift+click to delete without confirmation)",
 		"sidebar.expandForks": "Expand forks",
 		"sidebar.collapseForks": "Collapse forks",
+		"sidebar.pinSession": "Pin to top",
+		"sidebar.unpinSession": "Unpin",
+		"sidebar.dragToReorder": "Drag to reorder",
 		"sidebar.messagesCount": "{count} msgs",
 		"sidebar.worktreePath": "Worktree: {path}",
 		"sidebar.removeWorktreeTitle":
