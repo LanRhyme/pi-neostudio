@@ -1368,7 +1368,7 @@ export const ChatWindow = memo(function ChatWindow({
 								style={{
 									position: "absolute",
 									right: isMobile ? 16 : CHAT_MINIMAP_WIDTH + 16,
-									bottom: 32,
+									bottom: 84,
 									zIndex: 60,
 									width: 36,
 									height: 36,
