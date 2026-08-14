@@ -463,7 +463,8 @@ export const ChatWindow = memo(function ChatWindow({
 		if (container && !earlierLoading) {
 			requestAnimationFrame(() => {
 				if (container) {
-					container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
+					container.scrollTop =
+						prevScrollTop + (container.scrollHeight - prevScrollHeight);
 				}
 			});
 		}

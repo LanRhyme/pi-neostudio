@@ -193,7 +193,8 @@ export const enLocale: LocalePlugin = {
 		"chat.collapseProcess": "Collapse process details",
 		"chat.expandProcess": "Expand process details",
 		"chat.loadEarlier": "Scroll up to load earlier messages ({count} hidden)",
-		"chat.loadEarlierCompacted": "Scroll up to load conversation before compaction",
+		"chat.loadEarlierCompacted":
+			"Scroll up to load conversation before compaction",
 		"chat.jumpToBottom": "Jump to bottom",
 		"chat.minimapLoadEarlier": "Load earlier conversation",
 		"chat.loadingEarlier": "Loading earlier conversation…",
@@ -557,7 +558,8 @@ export const enLocale: LocalePlugin = {
 			"Model used to generate commit messages; leave empty to use the default model",
 		"git.aiModelDefault": "Default model",
 		"git.aiMaxTokens": "Max tokens",
-		"git.aiMaxTokensDesc": "Output token budget (default 1000000); thinking models need a large budget, clamped to the model ceiling",
+		"git.aiMaxTokensDesc":
+			"Output token budget (default 1000000); thinking models need a large budget, clamped to the model ceiling",
 		"git.aiPrompt": "Prompt template",
 		"git.aiPromptDesc":
 			"Use the {diff} placeholder for the staged diff; leave empty to use the built-in prompt",
