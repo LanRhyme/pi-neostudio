@@ -67,6 +67,7 @@ interface Props {
 		onLeafChange: (leafId: string | null) => void,
 	) => void;
 	onSystemPromptChange?: (prompt: string | null) => void;
+	onSystemPromptLoaderChange?: (loader: (() => Promise<void>) | null) => void;
 	onSessionStatsChange?: (stats: SessionStatsInfo | null) => void;
 	onSessionStatsPanelOpen?: () => void;
 	onContextUsageChange?: (
@@ -193,15 +194,17 @@ function withAssistantBlocks(
 function ProcessDetailsGroup({
 	messageCount,
 	toolCallCount,
+	defaultExpanded = false,
 	children,
 	t,
 }: {
 	messageCount: number;
 	toolCallCount: number;
+	defaultExpanded?: boolean;
 	children: ReactNode;
 	t: (key: string, params?: Record<string, string | number>) => string;
 }) {
-	const [expanded, setExpanded] = useState(false);
+	const [expanded, setExpanded] = useState(defaultExpanded);
 	const parts = [
 		t("chat.processDetails"),
 		`${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`,
@@ -276,6 +279,7 @@ export const ChatWindow = memo(function ChatWindow({
 	chatInputRef,
 	onBranchDataChange,
 	onSystemPromptChange,
+	onSystemPromptLoaderChange,
 	onSessionStatsChange,
 	onSessionStatsPanelOpen,
 	onContextUsageChange,
@@ -415,6 +419,7 @@ export const ChatWindow = memo(function ChatWindow({
 		chatInputRef,
 		onBranchDataChange,
 		onSystemPromptChange,
+		onSystemPromptLoaderChange,
 		onSessionStatsPanelOpen,
 	});
 	const sessionBusy = agentRunning || bashRunning;
@@ -713,12 +718,6 @@ export const ChatWindow = memo(function ChatWindow({
 		/>
 	);
 
-	const aboveEditorWidgets = extensionWidgets.filter(
-		(widget) => widget.placement !== "belowEditor",
-	);
-	const belowEditorWidgets = extensionWidgets.filter(
-		(widget) => widget.placement === "belowEditor",
-	);
 
 	if (loading) {
 		return (
@@ -939,7 +938,6 @@ export const ChatWindow = memo(function ChatWindow({
 										margin: "0 auto",
 									}}
 								>
-									<ExtensionWidgets widgets={aboveEditorWidgets} />
 
 									{(() => {
 										const toolResultsMap = new Map<string, ToolResultMessage>();
@@ -1192,6 +1190,7 @@ export const ChatWindow = memo(function ChatWindow({
 												const processGroup = (
 													<ProcessDetailsGroup
 														messageCount={processCount}
+														defaultExpanded={!finalAnswerMessage}
 														t={t}
 														toolCallCount={
 															countToolCalls(messages, visibleProcessIndices) +
@@ -1363,9 +1362,8 @@ export const ChatWindow = memo(function ChatWindow({
 							}}
 						>
 							<div style={{ maxWidth: 820, margin: "0 auto" }}>
-								<ExtensionWidgets widgets={belowEditorWidgets} />
 								{chatInputElement}
-								<ExtensionStatusBar statuses={extensionStatuses} />
+								<ExtensionStatusBar statuses={extensionStatuses} widgets={extensionWidgets} />
 							</div>
 						</div>
 						{/* 自定义主题滚动条（位于 minimap 左侧） */}
@@ -1430,62 +1428,6 @@ export const ChatWindow = memo(function ChatWindow({
 		</div>
 	);
 });
-
-function ExtensionWidgets({
-	widgets,
-}: {
-	widgets: Array<{ key: string; lines: string[] }>;
-}) {
-	if (widgets.length === 0) return null;
-	return (
-		<div
-			style={{
-				display: "flex",
-				flexDirection: "column",
-				gap: 8,
-				marginBottom: 10,
-			}}
-		>
-			{widgets.map((widget) => (
-				<div
-					key={widget.key}
-					style={{
-						border: "1px solid var(--border)",
-						borderRadius: 7,
-						background: "var(--bg-panel)",
-						overflow: "hidden",
-					}}
-				>
-					<div
-						style={{
-							padding: "5px 9px",
-							borderBottom: "1px solid var(--border)",
-							color: "var(--text-dim)",
-							fontSize: 11,
-							fontFamily: "var(--font-mono)",
-						}}
-					>
-						{widget.key}
-					</div>
-					<pre
-						style={{
-							margin: 0,
-							padding: "8px 9px",
-							color: "var(--text-muted)",
-							fontSize: 12,
-							lineHeight: 1.5,
-							whiteSpace: "pre-wrap",
-							wordBreak: "break-word",
-							fontFamily: "var(--font-mono)",
-						}}
-					>
-						{widget.lines.join("\n")}
-					</pre>
-				</div>
-			))}
-		</div>
-	);
-}
 
 function NoticeShelf({
 	notices,

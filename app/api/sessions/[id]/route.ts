@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import {
@@ -99,12 +99,16 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const filePath = await resolveSessionPath(id);
-    if (!filePath) {
+    // 优先使用活跃的 RPC 会话（其 sessionManager 持有瞬时会话的内存状态）
+    const rpc = getRpcSession(id);
+    const liveRpc = rpc?.isAlive() ? rpc : undefined;
+    const resolvedPath = liveRpc ? null : await resolveSessionPath(id);
+    if (!liveRpc && !resolvedPath) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const sm = SessionManager.open(filePath);
+    const sm = liveRpc?.inner.sessionManager ?? SessionManager.open(resolvedPath!);
+    const filePath = liveRpc?.sessionFile || sm.getSessionFile() || resolvedPath || "";
     const entries = sm.getEntries() as never;
     const leafId = sm.getLeafId();
     const tree = projectTreeForResponse(sm.getTree());
@@ -135,6 +139,7 @@ export async function GET(
           })()
         : "(no messages)",
       parentSessionId,
+      transient: !filePath || !existsSync(filePath),
     } : null;
 
     return NextResponse.json({

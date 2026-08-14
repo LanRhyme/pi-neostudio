@@ -184,6 +184,16 @@ export function AppShell() {
     setSystemPrompt(prompt);
   }, []);
 
+  // 系统面板懒加载：面板打开时才初始化会话并拉取系统提示词（上游 #475）
+  const [systemPromptLoading, setSystemPromptLoading] = useState(false);
+  const systemPromptLoaderRef = useRef<(() => Promise<void>) | null>(null);
+  const systemPromptLoadIdRef = useRef(0);
+  const handleSystemPromptLoaderChange = useCallback((loader: (() => Promise<void>) | null) => {
+    systemPromptLoadIdRef.current += 1;
+    systemPromptLoaderRef.current = loader;
+    setSystemPromptLoading(false);
+  }, []);
+
   // Session stats (tokens + cost) — populated by ChatWindow, displayed in top bar
   const [sessionStats, setSessionStats] = useState<SessionStatsInfo | null>(null);
   const [autoNameStatus, setAutoNameStatus] = useState<AutoNameStatus>({ kind: "idle" });
@@ -235,6 +245,25 @@ export function AppShell() {
     if (isMobile) uiPanelStore.setSidebarOpen(false);
     setActiveTopPanel((cur) => cur === panel ? null : panel);
   }, [isMobile]);
+
+  const handleSystemPromptToggle = useCallback(() => {
+    const opening = activeTopPanel !== "system";
+    if (isMobile) uiPanelStore.setSidebarOpen(false);
+    setActiveTopPanel((cur) => cur === "system" ? null : "system");
+    if (!opening || systemPromptLoading) return;
+
+    const load = systemPromptLoaderRef.current;
+    if (!load) return;
+    const loadId = ++systemPromptLoadIdRef.current;
+    setSystemPromptLoading(true);
+    void load().catch((error) => {
+      console.error("Failed to load system prompt:", error);
+    }).finally(() => {
+      if (systemPromptLoadIdRef.current === loadId) {
+        setSystemPromptLoading(false);
+      }
+    });
+  }, [activeTopPanel, systemPromptLoading, isMobile]);
 
   const openSessionStatsPanel = useCallback(() => {
     if (isMobile) uiPanelStore.setSidebarOpen(false);
@@ -1239,7 +1268,7 @@ export function AppShell() {
               />
               <button
                 ref={systemBtnRef}
-                onClick={() => toggleTopPanel("system")}
+                onClick={() => handleSystemPromptToggle()}
                  title={translate("system.prompt")}
                  aria-label={translate("system.prompt")}
                 aria-pressed={activeTopPanel === "system"}
@@ -1474,6 +1503,10 @@ export function AppShell() {
                        [translate("session.output"), sessionStats.tokens.output.toLocaleString(locale)],
                        ...(sessionStats.tokens.cacheRead > 0 ? [[translate("session.cacheRead"), sessionStats.tokens.cacheRead.toLocaleString(locale)]] : []),
                        ...(sessionStats.tokens.cacheWrite > 0 ? [[translate("session.cacheWrite"), sessionStats.tokens.cacheWrite.toLocaleString(locale)]] : []),
+                       // 缓存命中率 = cacheRead / (input + cacheWrite + cacheRead)，分母覆盖全部输入类 token
+                       ...(sessionStats.tokens.cacheRead + sessionStats.tokens.cacheWrite > 0 && sessionStats.tokens.cacheRead + sessionStats.tokens.cacheWrite + sessionStats.tokens.input > 0
+                         ? [[translate("session.cacheHitRate"), `${(sessionStats.tokens.cacheRead / (sessionStats.tokens.cacheRead + sessionStats.tokens.cacheWrite + sessionStats.tokens.input) * 100).toFixed(1)}%`]]
+                         : []),
                        [translate("session.total"), sessionStats.tokens.total.toLocaleString(locale)],
                     ];
                     const ctx = contextUsage ?? sessionStats.contextUsage;
@@ -1624,6 +1657,7 @@ export function AppShell() {
               chatInputRef={chatInputRef}
               onBranchDataChange={handleBranchDataChange}
               onSystemPromptChange={handleSystemPromptChange}
+              onSystemPromptLoaderChange={handleSystemPromptLoaderChange}
               onSessionStatsChange={handleSessionStatsChange}
               onSessionStatsPanelOpen={openSessionStatsPanel}
               onContextUsageChange={handleContextUsageChange}

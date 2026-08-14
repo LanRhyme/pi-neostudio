@@ -28,6 +28,27 @@ function writeModelsJson(data: Record<string, unknown>): void {
   writePrivateFileAtomicSync(path, JSON.stringify(data, null, 2));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// 忽略空模型配置行：过滤 id 为空白字符串的 provider model（上游 #473）
+function sanitizeModelsConfig(data: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(data.providers)) return data;
+
+  const providers = Object.fromEntries(
+    Object.entries(data.providers).map(([providerId, provider]) => {
+      if (!isRecord(provider) || !Array.isArray(provider.models)) return [providerId, provider];
+      const models = (provider.models as unknown[]).filter((model) => (
+        !isRecord(model) || typeof model.id !== "string" || model.id.trim().length > 0
+      ));
+      return [providerId, { ...provider, models }];
+    }),
+  );
+
+  return { ...data, providers };
+}
+
 export async function GET() {
   return NextResponse.json(readModelsJson());
 }
@@ -35,7 +56,7 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const body = await req.json() as Record<string, unknown>;
-    writeModelsJson(body);
+    writeModelsJson(sanitizeModelsConfig(body));
     invalidateModelsCache();
     return NextResponse.json({ success: true });
   } catch (error) {

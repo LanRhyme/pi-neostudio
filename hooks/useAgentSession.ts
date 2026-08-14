@@ -148,6 +148,7 @@ export interface UseAgentSessionOptions {
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
   onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => void) => void;
   onSystemPromptChange?: (prompt: string | null) => void;
+  onSystemPromptLoaderChange?: (loader: (() => Promise<void>) | null) => void;
   onSessionStatsPanelOpen?: () => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
 }
@@ -333,7 +334,7 @@ type SlashCommandsResponse = {
 export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
+    modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSystemPromptLoaderChange, onSessionStatsPanelOpen,
   } = opts;
 
   const isNew = session === null && newSessionCwd !== null;
@@ -722,6 +723,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       eventStreamGraceTimerRef.current = null;
     }
   }, []);
+
+  // 打开系统面板时允许初始化一个休眠会话：这是刻意非 prompt 的命令，
+  // 不创建消息或模型运行，但让用户能在发送前查看确切提示词（上游 #475）
+  const loadSystemPrompt = useCallback(async () => {
+    const sid = sessionIdRef.current ?? await ensureNewSession();
+    if (!sid) return;
+
+    const state = await sendAgentCommand<{ systemPrompt?: string | null }>(sid, { type: "get_state" });
+    if (sessionIdRef.current !== sid) return;
+    setSystemPrompt(state.systemPrompt ?? null);
+  }, [ensureNewSession]);
+
+  useEffect(() => {
+    onSystemPromptLoaderChange?.(loadSystemPrompt);
+    return () => onSystemPromptLoaderChange?.(null);
+  }, [loadSystemPrompt, onSystemPromptLoaderChange]);
 
   const closeEvents = useCallback(() => {
     eventSourceRef.current?.close();

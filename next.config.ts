@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-const { version } = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as { version: string };
+let version = "unknown";
+try {
+  version = (JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as { version: string }).version;
+} catch { /* package not found, use default */ }
 let piVersion = "unknown";
 try {
   const piPkgPath = join(__dirname, "node_modules/@earendil-works/pi-coding-agent/package.json");
@@ -17,7 +20,7 @@ const nextConfig: NextConfig = {
     "@earendil-works/pi-ai",
     "@earendil-works/pi-tui",
   ],
-  allowedDevOrigins: ['192.168.*.*'],
+  allowedDevOrigins: ["127.0.0.1", "192.168.*.*"],
   devIndicators: false,
   async headers() {
     return [
