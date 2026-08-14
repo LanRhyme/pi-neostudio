@@ -4,6 +4,7 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useState, useCallback, u
 import { createPortal } from "react-dom";
 import type { SessionInfo } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
+import { CustomScrollbar } from "./CustomScrollbar";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { FileExplorer, type FileExplorerHandle } from "./FileExplorer";
 import { GitPanel } from "./GitPanel";
@@ -836,6 +837,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [customPathError, setCustomPathError] = useState<string | null>(null);
   const [customPathValidating, setCustomPathValidating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const sessionListScrollRef = useRef<HTMLDivElement>(null);
   const [hiddenProjects, setHiddenProjects] = useState<Set<string>>(() => loadHiddenProjects());
   const [pinnedProjects, setPinnedProjects] = useState<Set<string>>(() => loadPinnedProjects());
   const [manageWorkspacesOpen, setManageWorkspacesOpen] = useState(false);
@@ -2350,9 +2352,19 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
       {/* Session list */}
       <div
+        style={{
+          position: "relative",
+          flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 80,
+        }}
+      >
+      <div
         key={selectedCwd ?? "all"}
-        className="panel-content-in"
-        style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}
+        ref={sessionListScrollRef}
+        className="panel-content-in no-native-scrollbar"
+        style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "0", minHeight: 0 }}
       >
         {searchQuery.trim().length >= 2 ? (
           <div style={{ padding: "8px 0" }}>
@@ -2559,6 +2571,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 ))}
           </>
         )}
+      </div>
+      <CustomScrollbar containerRef={sessionListScrollRef} right={3} zIndex={40} />
       </div>
 
       {/* File Explorer section */}

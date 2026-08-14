@@ -32,6 +32,7 @@ import {
 import { MessageView } from "./MessageView";
 import { useUiSettings } from "@/hooks/useUiSettings";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { CustomScrollbar } from "./CustomScrollbar";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
 import { useI18n } from "@/hooks/useI18n";
@@ -547,8 +548,11 @@ export const ChatWindow = memo(function ChatWindow({
 			container.scrollHeight - container.scrollTop - container.clientHeight <
 			120;
 		stickToBottomRef.current = atBottom;
-		// 值不变时不更新状态，避免每次滚动都触发重渲染
-		setShowJumpToBottom((prev) => (prev === atBottom ? prev : !atBottom));
+		// 值不变时不更新状态，避免每次滚动都触发重渲染（按钮显隐 = 是否在底部取反）
+		setShowJumpToBottom((prev) => {
+			const next = !atBottom;
+			return prev === next ? prev : next;
+		});
 	}, [scrollContainerRef]);
 
 	const jumpToBottom = useCallback(() => {
@@ -921,7 +925,7 @@ export const ChatWindow = memo(function ChatWindow({
 							key={session?.id ?? sessionIdRef.current ?? "default"}
 							ref={scrollContainerRef}
 							onScroll={handleScroll}
-							className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:thin] panel-content-in"
+							className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:none] no-native-scrollbar panel-content-in"
 						>
 							<div
 								style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}
@@ -1359,6 +1363,13 @@ export const ChatWindow = memo(function ChatWindow({
 								<ExtensionStatusBar statuses={extensionStatuses} />
 							</div>
 						</div>
+						{/* 自定义主题滚动条（位于 minimap 左侧） */}
+						<CustomScrollbar
+							containerRef={scrollContainerRef}
+							right={isMobile ? 4 : CHAT_MINIMAP_WIDTH + 4}
+							width={8}
+							zIndex={45}
+						/>
 						{/* 不在底部时显示一键回底部悬浮按钮 */}
 						{showJumpToBottom && (
 							<button

@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { AssistantMessage, SessionEntry, SessionTreeNode } from "@/lib/types";
 import { splitFinalAssistantBlocks } from "@/lib/message-display";
+import { CustomScrollbar } from "./CustomScrollbar";
 import { useI18n } from "@/hooks/useI18n";
 
 interface Props {
@@ -93,10 +94,10 @@ function isUserMessageNode(node: SessionTreeNode): boolean {
     : false;
 }
 
-// 对话树分段显示：初始行数、自动展开上限、每页增量
-const INITIAL_ROWS = 100;
-const MAX_AUTO_EXPAND_ROWS = 500;
-const ROWS_PER_PAGE = 100;
+// 对话树分段显示：初始行数（常规会话直接完整显示）、自动展开上限、每页增量
+const INITIAL_ROWS = 500;
+const MAX_AUTO_EXPAND_ROWS = 2000;
+const ROWS_PER_PAGE = 200;
 
 /** 按渲染顺序（深度优先，与 TreeNodeView 一致）计算活动叶子所在的行号，单次遍历 */
 function findActiveRow(nodes: SessionTreeNode[], targetId: string | null): number | null {
@@ -295,6 +296,7 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
   const [openInternal, setOpenInternal] = useState(false);
   const open = openProp !== undefined ? openProp : openInternal;
   const btnRef = useRef<HTMLButtonElement>(null);
+  const treeScrollRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   // 分段显示：行数预算，打开时自动展开到活动节点所在行（完整显示整个会话）
   const [visibleRows, setVisibleRows] = useState(INITIAL_ROWS);
@@ -306,6 +308,18 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
       Math.max(prev, Math.min(activeRow + 1, MAX_AUTO_EXPAND_ROWS)),
     );
   }, [tree, activeLeafId]);
+
+  // 打开或导航后，滚动树容器让活动节点保持可见（行高统一 24px）
+  useEffect(() => {
+    if (!open) return;
+    const activeRow = findActiveRow(tree, activeLeafId);
+    if (activeRow === null) return;
+    const el = treeScrollRef.current;
+    if (el) {
+      const target = activeRow * 24 - el.clientHeight / 2;
+      el.scrollTop = Math.max(0, target);
+    }
+  }, [open, tree, activeLeafId]);
 
   const showMoreLabel = t("i18n.showMoreRows");
   const handleShowMore = useCallback(() => {
@@ -413,7 +427,8 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
               zIndex: 5000,
             }}>
             {hasContent && firstNode ? (
-              <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
+              <div style={{ position: "relative" }}>
+                <div ref={treeScrollRef} className="no-native-scrollbar" style={{ padding: "4px 12px 8px 12px", maxHeight: 400, overflowY: "auto" }}>
                 <TreeNodeView
                   node={firstNode}
                   activePathIds={activePathIds}
@@ -426,6 +441,8 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
                   onShowMore={handleShowMore}
                   showMoreLabel={showMoreLabel}
                 />
+                </div>
+                <CustomScrollbar containerRef={treeScrollRef} right={2} zIndex={60} />
               </div>
             ) : (
               <div style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
@@ -477,7 +494,8 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
           zIndex: 100,
         }}>
           {hasContent && firstNode ? (
-            <div style={{ padding: "4px 12px 8px 12px", maxHeight: 260, overflowY: "auto" }}>
+            <div style={{ position: "relative" }}>
+              <div ref={treeScrollRef} className="no-native-scrollbar" style={{ padding: "4px 12px 8px 12px", maxHeight: 400, overflowY: "auto" }}>
               <TreeNodeView
                 node={firstNode}
                 activePathIds={activePathIds}
@@ -490,6 +508,8 @@ export function BranchNavigator({ tree, activeLeafId, onLeafChange, inline, cont
                 onShowMore={handleShowMore}
                 showMoreLabel={showMoreLabel}
               />
+              </div>
+              <CustomScrollbar containerRef={treeScrollRef} right={2} zIndex={60} />
             </div>
           ) : (
             <div style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
