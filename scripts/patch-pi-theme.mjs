@@ -11,39 +11,43 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const themePath = join(
-  __dirname,
-  "..",
-  "node_modules",
-  "@earendil-works",
-  "pi-coding-agent",
-  "dist",
-  "modes",
-  "interactive",
-  "theme",
-  "theme.js",
+	__dirname,
+	"..",
+	"node_modules",
+	"@earendil-works",
+	"pi-coding-agent",
+	"dist",
+	"modes",
+	"interactive",
+	"theme",
+	"theme.js",
 );
 
 if (!existsSync(themePath)) {
-  console.log("[patch-pi-theme] theme.js not found, skip");
-  process.exit(0);
+	console.log("[patch-pi-theme] theme.js not found, skip");
+	process.exit(0);
 }
 
 const src = readFileSync(themePath, "utf8");
 if (src.includes("color == null")) {
-  console.log("[patch-pi-theme] already patched, skip");
-  process.exit(0);
+	console.log("[patch-pi-theme] already patched, skip");
+	process.exit(0);
 }
 
 const fgOld = '    if (color === "")\n        return "\\x1b[39m";';
-const fgNew = '    if (color == null || color === "")\n        return "\\x1b[39m";';
+const fgNew =
+	'    if (color == null || color === "")\n        return "\\x1b[39m";';
 const bgOld = '    if (color === "")\n        return "\\x1b[49m";';
-const bgNew = '    if (color == null || color === "")\n        return "\\x1b[49m";';
+const bgNew =
+	'    if (color == null || color === "")\n        return "\\x1b[49m";';
 
 if (!src.includes(fgOld) || !src.includes(bgOld)) {
-  console.error("[patch-pi-theme] unexpected theme.js content, patch aborted");
-  process.exit(1);
+	console.error("[patch-pi-theme] unexpected theme.js content, patch aborted");
+	process.exit(1);
 }
 
 const patched = src.replace(fgOld, fgNew).replace(bgOld, bgNew);
 writeFileSync(themePath, patched);
-console.log("[patch-pi-theme] patched pi-coding-agent theme.js (bgAnsi/fgAnsi null guard)");
+console.log(
+	"[patch-pi-theme] patched pi-coding-agent theme.js (bgAnsi/fgAnsi null guard)",
+);
